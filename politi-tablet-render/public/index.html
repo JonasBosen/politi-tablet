@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>POLITI Tablet</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="login" class="login-screen">
+  <div class="login-card">
+    <div class="brand">POLITI</div>
+    <p class="muted">Politi Tablet</p>
+    <form id="loginForm">
+      <input id="username" placeholder="Brugernavn" value="admin" required>
+      <input id="password" placeholder="Adgangskode" type="password" value="admin123" required>
+      <button>Log ind</button>
+      <div id="loginError" class="error"></div>
+    </form>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+<header>
+  <div class="brand">POLITI</div>
+  <nav id="nav">
+    <button data-page="dashboard">⌂ Home</button>
+    <button data-page="persons">♙ Person Register</button>
+    <button data-page="vehicles">▣ Køretøjs Database</button>
+    <button data-page="warrants">⌕ Efterlysninger</button>
+    <button data-page="board">◈ Opslagstavle</button>
+    <button data-page="fines">▤ Bødetakster</button>
+    <button data-page="employees">♙ Ansatte</button>
+    <button data-page="applications">▱ Ansøgninger</button>
+    <button data-page="logs" id="logsNav" class="adminOnly">☷ Logs</button>
+    <button data-page="settings" id="settingsNav" class="adminOnly">⚙ Indstillinger</button>
+  </nav>
+  <div class="profile"><span id="userName"></span><button id="logout">Log ud</button></div>
+</header>
+<main id="content"></main>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: politi-tablet
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: Dream_Network_politi
+          property: connectionString
+
+databases:
+  - name: Dream_Network_politi
+    plan: free
