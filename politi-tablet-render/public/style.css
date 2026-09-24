@@ -178,6 +178,7 @@ header nav button:hover,header nav button.active{color:#fff}
 header nav button.active:after{height:2px;bottom:0;left:8px;right:8px;background:#6660f3;box-shadow:none;border-radius:0}
 header>.profile-menu{grid-column:3;grid-row:1;position:relative;justify-self:end;color:#25262b;font-size:calc(var(--font-scale, 1) * 11px)}
 .profile-menu summary{min-width:112px;display:flex;justify-content:space-between;align-items:center;gap:18px;padding:9px 12px;list-style:none;cursor:pointer;background:#c9cacf;border:1px solid #d3d4d8;border-radius:4px;color:#24252a}
+.profile-menu summary{background:linear-gradient(140deg,#31425a,#253247);border-color:#58708f;color:#f2f7ff;box-shadow:0 3px 11px #05091355}
 .profile-menu summary::-webkit-details-marker{display:none}
 .profile-dropdown{position:absolute;z-index:20;top:calc(100% + 5px);right:0;min-width:185px;padding:10px;display:grid;gap:8px;background:#30333a;border:1px solid #494c54;border-radius:4px;box-shadow:var(--shadow);color:#ddd}
 .profile-dropdown #userName{font-size:calc(var(--font-scale, 1) * 11px)}
@@ -345,4 +346,57 @@ main{max-width:1800px;min-height:calc(100vh - 130px);padding:25px clamp(22px,4.4
 .detail-top.panel{background:#30333a}
 @media(max-width:820px){.board-reference-top{grid-template-columns:1fr 1fr}.board-reference-top .board-admin{grid-column:span 2}.board-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.board-reference-top{grid-template-columns:1fr}.board-reference-top .board-admin{grid-column:auto}.board-grid{grid-template-columns:1fr}}
+
+/* A refined midnight-blue surface with clear, tactile action colors. */
+:root{--accent:#2487ff;--accent-bright:#6bb2ff;--green:#24c878;--red:#ed4356;--shadow:0 16px 42px #050a13a6}
+body{background:radial-gradient(ellipse at 50% -30%,#1c3452 0,transparent 52%),var(--bg)}
+header{background:linear-gradient(105deg,#111a28f5,#192537f2 55%,#121d2cf5);border-bottom-color:#30445d;box-shadow:0 8px 28px #05091366}
+header>.brand{color:#f5f9ff;text-shadow:0 0 18px #2c8bff35}
+header nav button.active:after{background:linear-gradient(90deg,#2487ff,#55c6ff);box-shadow:0 0 12px #2487ff88}
+.panel,.settings-card,.post-card{background:linear-gradient(145deg,#282f3a,#222832);border-color:#3a4656;box-shadow:0 9px 26px #05091355}
+.stat-card{background:linear-gradient(135deg,#2c3543,#222a36);border-color:#3e4e63;box-shadow:0 8px 22px #05091355,inset 0 1px #ffffff08}
+.stat-card:hover{border-color:#348ef0;box-shadow:0 12px 28px #05091377,0 0 0 1px #348ef033}
+.stat-icon{background:linear-gradient(145deg,#308bfa,#514dda);box-shadow:0 5px 15px #287af044}
+.table-wrap{border-color:#39485b;box-shadow:0 6px 18px #05091333}
+.table{background:#222b38}
+.table th{background:#2b384a;color:#b8c9df}
+.table tbody tr:hover{background:#2c3a4d}
+.page-head h1{text-shadow:0 2px 20px #278cff22}
+.profile-menu summary{border-color:#52657f;box-shadow:0 3px 11px #05091355}
+.modalbox{background:linear-gradient(145deg,#262e3a,#1d242e)}
+.search,.form input,.form textarea,.form select,.setting-row>input,.setting-row>select{background:#171f2b;border-color:#38485e}
+.search:focus,.form input:focus,.form textarea:focus,.form select:focus{border-color:#489cff!important;box-shadow:0 0 0 3px #2487ff2c}
+.btn,.icon-btn,.profile-dropdown button,.profile-upload-label,.profile-remove-button,.quick-actions button,.board-admin-actions button,.application-admin-actions button{
+  position:relative;isolation:isolate;border-radius:8px;font-weight:700;letter-spacing:.12px;
+  box-shadow:0 3px 9px #0003,inset 0 1px #ffffff12;
+  transition:transform .16s ease,filter .16s ease,box-shadow .16s ease,border-color .16s ease;
+}
+.btn{height:38px;padding:0 15px;background:linear-gradient(180deg,#3d4655,#303744);border-color:#566174;color:#f3f6fb}
+.btn:hover,.icon-btn:hover,.profile-dropdown button:hover,.quick-actions button:hover,.board-admin-actions button:hover,.application-admin-actions button:hover{transform:translateY(-1px);filter:brightness(1.13);box-shadow:0 6px 15px #0005,inset 0 1px #ffffff20}
+.btn:active,.icon-btn:active{transform:translateY(0) scale(.98)}
+.btn:focus-visible,.icon-btn:focus-visible{outline:2px solid #c5d9ff;outline-offset:2px}
+.primary-btn,.login-submit{background:linear-gradient(135deg,#2487ff,#1763db);border-color:#52a2ff;color:white;box-shadow:0 4px 14px #126dec55,inset 0 1px #ffffff40}
+.primary-btn:hover,.login-submit:hover{background:linear-gradient(135deg,#3997ff,#2677eb);border-color:#83bdff;box-shadow:0 7px 19px #126dec77,inset 0 1px #ffffff55}
+.success,.green-btn,.btn.add-btn,.toolbar>.btn.primary-btn,.form>.btn.primary-btn[type="submit"],.detail-top>.btn.primary-btn,.panel-head>.btn.primary-btn{background:linear-gradient(135deg,#20bb71,#12864f);border-color:#48e19a;color:#f2fff8;box-shadow:0 4px 14px #11a15b50,inset 0 1px #ffffff45}
+.success:hover,.green-btn:hover,.btn.add-btn:hover,.toolbar>.btn.primary-btn:hover,.form>.btn.primary-btn[type="submit"]:hover,.detail-top>.btn.primary-btn:hover,.panel-head>.btn.primary-btn:hover{background:linear-gradient(135deg,#2bd182,#17a263);border-color:#80f0b8;box-shadow:0 7px 18px #11a15b70,inset 0 1px #ffffff55}
+.danger,.btn.danger,.btn.danger-btn,.profile-remove-button{background:linear-gradient(135deg,#f04d59,#c9273d);border-color:#ff7580;color:#fff;box-shadow:0 4px 14px #c9273d55,inset 0 1px #ffffff45}
+.danger:hover,.btn.danger:hover,.btn.danger-btn:hover,.profile-remove-button:hover{background:linear-gradient(135deg,#ff6570,#dc3047);border-color:#ff9aa1;box-shadow:0 7px 18px #c9273d77,inset 0 1px #ffffff55}
+.subtle{background:linear-gradient(180deg,#34465a,#29384b);border-color:#47739a;color:#d9edff}
+.icon-btn{width:32px;height:32px;background:linear-gradient(180deg,#3d4655,#303744);border-color:#596476;color:#e8eef8}
+.icon-btn.danger-text,.danger-text.icon-btn{background:linear-gradient(135deg,#7d303d,#53232e);border-color:#a84958;color:#ffb0b5}
+.icon-btn.danger-text:hover,.danger-text.icon-btn:hover{background:linear-gradient(135deg,#e64757,#a92f41);border-color:#ff7480;color:#fff}
+.quick-actions button,.board-admin-actions button,.application-admin-actions button{background:linear-gradient(145deg,#303b4a,#272f3c);border:1px solid #46566b}
+.quick-actions button:hover,.board-admin-actions button:hover,.application-admin-actions button:hover{border-color:#4295f5}
+.quick-actions button span,.board-admin-actions button>span:first-child,.application-admin-actions button>span:first-child{color:#75baff}
+.board-admin-actions button:has(b:first-child),.application-admin-actions button:has(b:first-child){min-height:48px}
+.toolbar>.btn.primary-btn{background:linear-gradient(135deg,#20bb71,#12864f);border-color:#48e19a}
+.penalty-add-row>.btn.primary-btn,.board-guides .panel-head>.icon-btn{background:linear-gradient(135deg,#20bb71,#12864f);border-color:#48e19a;color:#fff;box-shadow:0 4px 14px #11a15b50,inset 0 1px #ffffff45}
+.application-admin-actions button:nth-child(1),.board-admin-actions button:nth-child(-n+2){background:linear-gradient(145deg,#143c32,#1d302e);border-color:#287b5a}
+.application-admin-actions button:nth-child(1):hover,.board-admin-actions button:nth-child(-n+2):hover{border-color:#48d797}
+.application-admin-actions button:nth-child(1)>span:first-child,.board-admin-actions button:nth-child(-n+2)>span:first-child{background:#1d6848;color:#aaffd1}
+.application-admin-actions button:nth-child(n+2),.board-admin-actions button:nth-child(n+3){background:linear-gradient(145deg,#263e59,#253145);border-color:#3e658d}
+.application-admin-actions button:nth-child(n+2)>span:first-child,.board-admin-actions button:nth-child(n+3)>span:first-child{background:#254c74;color:#a8d8ff}
+.filter-tabs button,.chip{transition:background .15s ease,border-color .15s ease,color .15s ease}
+.modalbox{border-color:#526078;box-shadow:0 24px 75px #0009,0 0 0 1px #ffffff08}
+@media(prefers-reduced-motion:reduce){.btn,.icon-btn,.profile-dropdown button,.quick-actions button,.board-admin-actions button,.application-admin-actions button{transition:none}}
 
