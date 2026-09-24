@@ -67,6 +67,7 @@ async function initDb() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS employment_status VARCHAR(30) NOT NULL DEFAULT 'Aktiv';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS return_date DATE;
     UPDATE users SET employment_status='Inaktiv' WHERE active=false AND employment_status='Aktiv';
+    UPDATE users SET return_date=NULL WHERE employment_status NOT IN ('Syg','Ferie');
 
     CREATE TABLE IF NOT EXISTS ranks (
       id SERIAL PRIMARY KEY,
@@ -903,8 +904,9 @@ app.post("/api/employees", requireRankAtLeast(8), async (req,res) => {
   await logAction(req.session.user.id,"CREATE","Opret ansat",full_name); res.status(201).json(r.rows[0]);
 });
 app.patch("/api/employees/:id/return-date", requireRankAtLeast(8), async (req,res) => {
-  const employee=await q("SELECT id,username,full_name,rank,role FROM users WHERE id=$1",[req.params.id]);
+  const employee=await q("SELECT id,username,full_name,rank,role,employment_status FROM users WHERE id=$1",[req.params.id]);
   if(!employee.rowCount)return res.status(404).json({error:"Ansat ikke fundet"});
+  if(!["Syg","Ferie"].includes(employee.rows[0].employment_status))return res.status(400).json({error:"Returdato kan kun sættes for medarbejdere, der er syge eller på ferie"});
   const targetRank=await q("SELECT level FROM ranks WHERE name=$1",[employee.rows[0].rank]);
   if(!req.access.full&&(employee.rows[0].role==="admin"||Number(targetRank.rows[0]?.level)>=req.access.rank_level))
     return res.status(403).json({error:"Du kan kun sætte returdato for medarbejdere under dit eget rangniveau"});
@@ -929,7 +931,7 @@ app.patch("/api/employees/:id", requireRankAtLeast(8), async (req,res) => {
   const targetRank=await q("SELECT level FROM ranks WHERE name=$1",[rankName]);
   if(!targetRank.rowCount)return res.status(400).json({error:"Vælg en rang, der findes i rangadministrationen"});
   if(!req.access.full&&targetRank.rows[0].level>=req.access.rank_level)return res.status(403).json({error:"Du kan kun tildele rang under dit eget niveau"});
-  const r=await q(`UPDATE users SET full_name=COALESCE($1,full_name),rank=$2,badge_number=$3,role=$4,employment_status=$5,active=$6 WHERE id=$7
+  const r=await q(`UPDATE users SET full_name=COALESCE($1,full_name),rank=$2,badge_number=$3,role=$4,employment_status=$5,active=$6,return_date=CASE WHEN $5 IN ('Syg','Ferie') THEN return_date ELSE NULL END WHERE id=$7
     RETURNING id,username,full_name,rank,badge_number,role,active,employment_status,return_date,created_at`,
     [full_name||null,rankName,badge_number===undefined?null:(badge_number||null),role,employmentStatus,accountActive,req.params.id]);
   if(!r.rowCount) return res.status(404).json({error:"Ansat ikke fundet"});
