@@ -1,0 +1,903 @@
+[
+  {
+    "category": "Færdselsloven",
+    "code": "§1:1",
+    "title": "Fejlet i at holde for rødt lys",
+    "price_dkk": 2000,
+    "points": 1,
+    "prison_months": 0,
+    "description": "Stopper ikke for rødt lys og sætter andre trafikanter i fare."
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:2",
+    "title": "Kører imod færdselsretningen",
+    "price_dkk": 3000,
+    "points": 1,
+    "prison_months": 0,
+    "description": "Kører i forkerte siden af vejen og imod trafikken"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:3",
+    "title": "Overholder ikke sikkerhedsafstand",
+    "price_dkk": 1000,
+    "points": 1,
+    "prison_months": 0,
+    "description": "Køre for tæt på forankørende"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:4",
+    "title": "Misbrug af horn/højt musik fra køretøjet",
+    "price_dkk": 7500,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Hører utroligt højt musik og dytter uden fare på færde"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:5",
+    "title": "ulovligt horn",
+    "price_dkk": 1000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "kører med f.eks \"melodi-horn\" osv."
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:6",
+    "title": "Krydsning af Spærrelinje",
+    "price_dkk": 1000,
+    "points": 1,
+    "prison_months": 0,
+    "description": "Krydsning af spærrelinje"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:7",
+    "title": "Overtrædelse af reglerne om vigepligt",
+    "price_dkk": 1150,
+    "points": 1,
+    "prison_months": 0,
+    "description": "Overholder ikke sin vigepligt"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:8",
+    "title": "Parkering forbudt",
+    "price_dkk": 2000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Parkere ulovligt Eller ikke forsvarligt."
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:9",
+    "title": "Flugt fra politiet i køretøj",
+    "price_dkk": 10000,
+    "points": 0,
+    "prison_months": 10,
+    "description": "Flugter fra politiet i køretøj"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:10",
+    "title": "Køretøj ikke i forsvarlig stand",
+    "price_dkk": 5000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Manglende ting der kan sætte andre trafikanter i unødendige fare"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:11",
+    "title": "Kørsel uden kørekort",
+    "price_dkk": 10000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Kørsel uden førerret"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:12",
+    "title": "Påkørsel af individ",
+    "price_dkk": 10000,
+    "points": 3,
+    "prison_months": 0,
+    "description": "Påkører en gågænger"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:13",
+    "title": "Flugt fra ulykkested",
+    "price_dkk": 1000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Flugter fra ulykke sted"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:14",
+    "title": "ulovlig neonlys under køretøj",
+    "price_dkk": 2000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "ulovligt brug af neonlys"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:15",
+    "title": "Tonede ruder",
+    "price_dkk": 2000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "kører med ruder der ikke kommer 70% lys igennem"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:16",
+    "title": "Hjulspin/burnout på offt. vej",
+    "price_dkk": 2500,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Laver hjulspin/burnout på offentlige veje"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:17",
+    "title": "Kørsel på fortov/cykelsti",
+    "price_dkk": 1000,
+    "points": 1,
+    "prison_months": 0,
+    "description": "Kører med minimum et dæk på forstovet/cykelstien"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:18",
+    "title": "undlader brug af hjelm",
+    "price_dkk": 1000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Bruger ikke sikkerhedshjelm på Cykel/MC"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:19",
+    "title": "unødig røg og støj",
+    "price_dkk": 2000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Unødvendig røg og støj"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:20",
+    "title": "Vanvidskørsel",
+    "price_dkk": 25000,
+    "points": 3,
+    "prison_months": 0,
+    "description": "Kører helt vandvittigt og smadre ind i andre billister og huse osv. Bil skal indrages til staten."
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:21",
+    "title": "Fejlet i at stoppe for udrykningskøretøj",
+    "price_dkk": 1500,
+    "points": 1,
+    "prison_months": 0,
+    "description": "Holder ikke ind til siden når der kommer et udrykningskøretøj med siren og blink"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:22",
+    "title": "Sprituskørsel",
+    "price_dkk": 3500,
+    "points": 1,
+    "prison_months": 0,
+    "description": "Kører med en promille på over 0.5%"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:23",
+    "title": "Kørsel under påvirkning af narkotika",
+    "price_dkk": 3500,
+    "points": 3,
+    "prison_months": 0,
+    "description": "Har stoffer i blodet under kørsel"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:24",
+    "title": "ulovlig kørsel i nødsporet",
+    "price_dkk": 4500,
+    "points": 1,
+    "prison_months": 0,
+    "description": "Kører i nødsporet"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:25",
+    "title": "Håndholdt mobiltelefon",
+    "price_dkk": 2500,
+    "points": 1,
+    "prison_months": 0,
+    "description": "Brug af håndholdt mobiltelefon under kørsel"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:26",
+    "title": "Ulovlig overhaling højre/indenom",
+    "price_dkk": 2250,
+    "points": 2,
+    "prison_months": 0,
+    "description": "ulovlig overhaling højre om/indenom"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:27",
+    "title": "[50 km/t] Byzone fartgrænse 58 km/t og ^",
+    "price_dkk": 5000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Denne vælges når farten er 58 km/t og op efter"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:28",
+    "title": "[50 km/t] Byzone fartgrænse 66 km/t og ^",
+    "price_dkk": 7500,
+    "points": 1,
+    "prison_months": 0,
+    "description": "Denne vælges når farten er 66 km/t og op efter"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:29",
+    "title": "[50 km/t] Byzone fartgrænse 101 km/t og ^",
+    "price_dkk": 10000,
+    "points": 3,
+    "prison_months": 0,
+    "description": "Denne vælges når farten er 101+ og op efter Samtidig Frakendelse af Kørekort samt beslaglægges af køretøj + vandvidskørsel."
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:30",
+    "title": "[80 km/t] landevej zone fartgrænse 81km/t og ^",
+    "price_dkk": 5000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Denne vælges når farten er 81 km/t og op efter"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:31",
+    "title": "[80 km/t] landevej zone fartgrænse 105 km/t og ^",
+    "price_dkk": 6500,
+    "points": 1,
+    "prison_months": 0,
+    "description": "Denne vælges når farten er 105 km/t og op efter"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:32",
+    "title": "[80 km/t] landevej zone fartgrænse 129 km/t og ^",
+    "price_dkk": 10000,
+    "points": 3,
+    "prison_months": 0,
+    "description": "Denne vælges når farten er 129 km/t og op efter"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:33",
+    "title": "[80 km/t] landevej zone fartgrænse 161km/t og ^",
+    "price_dkk": 25000,
+    "points": 3,
+    "prison_months": 0,
+    "description": "Denne vælges når farten er 161 km/t og op efter Samtidigs Frakendelse af Kørekort samt beslaglægges af køretøj + vandvidskørsel."
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:34",
+    "title": "[130 km/t] Motorvej fartgrænse 132 km/t og ^",
+    "price_dkk": 15000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Denne vælges når farten er 132km/t og op efter"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:35",
+    "title": "[130 km/t] Motorvej fartgrænse 161 km/t og ^",
+    "price_dkk": 20000,
+    "points": 3,
+    "prison_months": 0,
+    "description": "Denne vælges når farten er 161 km/t og op efter"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:36",
+    "title": "[130 km/t] Motorvej fartgrænse 200 km/t og ^",
+    "price_dkk": 25000,
+    "points": 3,
+    "prison_months": 0,
+    "description": "Denne vælges når farten er 200km/t og op efter. Frakendelse af Kørekort samt beslaglægges af køretøj + vandvidskørsel."
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:37",
+    "title": "Kørsel uden medbragt kørekort.",
+    "price_dkk": 7500,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Ikke medbragt kørekort"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:38",
+    "title": "Ulovlig parkering i nødsporet",
+    "price_dkk": 5000,
+    "points": 1,
+    "prison_months": 0,
+    "description": "Holder ulovligt i nødsporet"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:39",
+    "title": "Kørsel uden lys",
+    "price_dkk": 1000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Kørsel uden lys på køretøj uden for lygtetændingstiden"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:40",
+    "title": "Kørsel på baghjul",
+    "price_dkk": 2000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Kørsel på baghjul"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:41",
+    "title": "Kørsel uden kørelære licens",
+    "price_dkk": 10000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Hvis kørelæren har glemt eller ikke har kørelære licens"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:42",
+    "title": "Kørsel med ulovlig biler på oflig vej",
+    "price_dkk": 15000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Hvis der bliver kørt i en bil ejnet til bane på oflig gade.Bil skal indrages til staten."
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:43",
+    "title": "(Trailer) Trailer med overlæs",
+    "price_dkk": 10000,
+    "points": 1,
+    "prison_months": 0,
+    "description": "Kørsel med fx lille trailer med en kassebil på laget. Dette vil udgøre en bøde + personen ikke må køre hvider før kassebilen er læset af"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:44",
+    "title": "(Lastbiler) Kørsel uden gyldig fragt dokumenter",
+    "price_dkk": 25000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Kørsel uden fragt dokumenter på lasten"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:45",
+    "title": "(Lastbiler) Overtrædelse af køre hviltids reglerne 20 min og^",
+    "price_dkk": 20000,
+    "points": 1,
+    "prison_months": 0,
+    "description": "Hvis du har kørt 20 min over dine 4.5 time eller over din smalet køre tid på de 9 timer. ( Spøger føreren og regn ude efter persons svar )"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:46",
+    "title": "(Lastbiler) Overtrædelse af køre hviltids reglerne 30 min og^",
+    "price_dkk": 30000,
+    "points": 2,
+    "prison_months": 0,
+    "description": "Hvis du har kørt 30 min over dine 4.5 time eller over din smalet køre tid på de 9 timer. ( Spøger føreren og regn ude efter persons svar )"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:47",
+    "title": "(Lastbiler) Overtrædelse af køre hviltids reglerne 40 min og^",
+    "price_dkk": 50000,
+    "points": 3,
+    "prison_months": 0,
+    "description": "Hvis du har kørt 50 min over dine 4.5 time eller over din smalet køre tid på de 9 timer. ( Spøger føreren og regn ude efter persons svar )"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:48",
+    "title": "ulovlig køretøj køre på oflig gade",
+    "price_dkk": 150000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Hvis du tager et ulovligt køretøj som køre på oflig gade. Ulovlig biler skal straffes med 7 Måneder"
+  },
+  {
+    "category": "Færdselsloven",
+    "code": "§1:49",
+    "title": "Impound Geby",
+    "price_dkk": 55000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Den gives når vi imponder køretøjer. Og falck skal ha 12000 kr af dem ved afhentning af bilerne"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:1",
+    "title": "Manddrab",
+    "price_dkk": 45000,
+    "points": 0,
+    "prison_months": 75,
+    "description": "Drab af en individ"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:2",
+    "title": "uagtsomt mandrab",
+    "price_dkk": 15000,
+    "points": 0,
+    "prison_months": 25,
+    "description": "uintentional drab af individ"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:3",
+    "title": "trusler på livet",
+    "price_dkk": 10000,
+    "points": 0,
+    "prison_months": 10,
+    "description": "truer en individ fysisk eller verbalt"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:4",
+    "title": "Brugstyveri af motorkøretøjer",
+    "price_dkk": 9500,
+    "points": 0,
+    "prison_months": 10,
+    "description": "Stjæler et andet persons køretøj"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:5",
+    "title": "Butikstyveri/bankrøveri/juvelrøveri",
+    "price_dkk": 100000,
+    "points": 0,
+    "prison_months": 50,
+    "description": "Røve Banker el. lign."
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:6",
+    "title": "Forsøg på vold mod tjenestemand i funktion",
+    "price_dkk": 7500,
+    "points": 0,
+    "prison_months": 10,
+    "description": "En person der forsøger at yde vold mod en tjenestemand"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:7",
+    "title": "Vold mod tjenestemand i funktion",
+    "price_dkk": 25000,
+    "points": 0,
+    "prison_months": 35,
+    "description": "Vold mod tjenestemand i funktion"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:8",
+    "title": "Tortur",
+    "price_dkk": 10000,
+    "points": 0,
+    "prison_months": 18,
+    "description": "Tortur af anden person"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:9",
+    "title": "Terrorisme",
+    "price_dkk": 100000,
+    "points": 0,
+    "prison_months": 100,
+    "description": "Vold og drab med intention om at ryste den estableteret regering"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:10",
+    "title": "Forsøg på mandrab",
+    "price_dkk": 15000,
+    "points": 0,
+    "prison_months": 25,
+    "description": "forsøg på Drab af en individ"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:11",
+    "title": "Kidnapning",
+    "price_dkk": 35000,
+    "points": 0,
+    "prison_months": 20,
+    "description": "Den, som berøver en anden friheden, straffes med bøde eller fængsel indtil 4 år."
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:12",
+    "title": "Overfald",
+    "price_dkk": 10000,
+    "points": 0,
+    "prison_months": 15,
+    "description": "At slå et andet menneske ned."
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:13",
+    "title": "Hadforbrydelse",
+    "price_dkk": 10000,
+    "points": 0,
+    "prison_months": 15,
+    "description": "Håner personer pga, deres race, tror, seksualitet."
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:14",
+    "title": "Hærværk",
+    "price_dkk": 3500,
+    "points": 0,
+    "prison_months": 7,
+    "description": "Hærværk er ødelæggelse af privat ejendom eller offentligt bygninger"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:15",
+    "title": "Forsøg på bestikkelse af tjenestemand",
+    "price_dkk": 1000,
+    "points": 0,
+    "prison_months": 5,
+    "description": "Forsøg på bestikkelse af tjenestemand i funktion"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:16",
+    "title": "Fornærmelse af Tjenestemand",
+    "price_dkk": 2500,
+    "points": 0,
+    "prison_months": 10,
+    "description": "Hvis en person siger skældsord af dig eller anden tjenestemand"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:17",
+    "title": "Chikane",
+    "price_dkk": 3000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Chikanere en anden person"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:18",
+    "title": "Forstyrrelse af politiets arbejde",
+    "price_dkk": 2000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Forstyrrelse af politiets arbejde, f.eks. under anholdelse osv."
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:19",
+    "title": "Følger ikke politiets anvisninger",
+    "price_dkk": 1500,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Følger ikke politiets anvisninger."
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:20",
+    "title": "Ulovlig maskering",
+    "price_dkk": 1500,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Ulovlig maskering."
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:21",
+    "title": "Ulovlig indtrægning",
+    "price_dkk": 2500,
+    "points": 0,
+    "prison_months": 10,
+    "description": "Indbrud eller en person der sætter sig ind i en bil der ikke er deres egne."
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:22",
+    "title": "Håner politiet",
+    "price_dkk": 2500,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Sviner politiet til"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:23",
+    "title": "brugstyveri af tjenestekøretøj",
+    "price_dkk": 15000,
+    "points": 0,
+    "prison_months": 10,
+    "description": "brugstyveri af tjenestekøretøjer"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:24",
+    "title": "Økonomisk Kriminalitet",
+    "price_dkk": 1000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "1000, - Men husk det er for 1000 og undersorte penge. F.eks. \" 10.000 Falske = 10.000 kr bødetakst. Over 35.000kr udløser 45 Mnd i fængsel."
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:25",
+    "title": "Flugtforsøg",
+    "price_dkk": 7500,
+    "points": 0,
+    "prison_months": 5,
+    "description": "Prøver at flugte fra fængslet"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:26",
+    "title": "Fangeflugt",
+    "price_dkk": 15000,
+    "points": 0,
+    "prison_months": 20,
+    "description": "Flygt fra Fængslet/Fængsels-transport"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:27",
+    "title": "Flugt Fra politiet",
+    "price_dkk": 10000,
+    "points": 0,
+    "prison_months": 10,
+    "description": "For at flygte fra politiet"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:28",
+    "title": "Tyverig",
+    "price_dkk": 10000,
+    "points": 0,
+    "prison_months": 10,
+    "description": "Hvis man stjæler for andre personer"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:29",
+    "title": "Brug af nytårsfyrværkeri uden for Perioderne",
+    "price_dkk": 2000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "ved brug af almindeligt nytårsfyrværkeri udenfor den tilladte periode som er den 1 december til den 3 januar"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:30",
+    "title": "Vold",
+    "price_dkk": 7500,
+    "points": 0,
+    "prison_months": 10,
+    "description": "Vold imod et andet menneske"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:31",
+    "title": "Polititilhold første gang.",
+    "price_dkk": 0,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Polititilhold første gang straffes med 0 bøde og 0 fængelse."
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:32",
+    "title": "Polititilhold.",
+    "price_dkk": 25000,
+    "points": 0,
+    "prison_months": 5,
+    "description": "Polititilhold som bliver brudt efter første straf"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:33",
+    "title": "Røde Papir",
+    "price_dkk": 10000,
+    "points": 0,
+    "prison_months": 12,
+    "description": "Røde Papir er hvis en læge mener at en person er for ustabil til at ku gå på gaden. Mdr kan ændre sig efter hvad lægen beslutter sig for Min 12 Mdr"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:34",
+    "title": "Hælden af Benzin",
+    "price_dkk": 10000,
+    "points": 0,
+    "prison_months": 6,
+    "description": "Når der bliver hældt med Benzin på privat/Offetligt grund"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:35",
+    "title": "Air Drop med Våbendele",
+    "price_dkk": 50000,
+    "points": 0,
+    "prison_months": 25,
+    "description": "Våbendele"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:36",
+    "title": "Air Drop Med kemikalier",
+    "price_dkk": 75000,
+    "points": 0,
+    "prison_months": 50,
+    "description": "kemikalier"
+  },
+  {
+    "category": "Straffeloven",
+    "code": "§2:37",
+    "title": "Vanvidskørsel ( Udsæt andre for fare )",
+    "price_dkk": 160000,
+    "points": 0,
+    "prison_months": 25,
+    "description": "Vanvidskørsel: Hvis du prøver og køre fra politiet og udsætter forl for fare og køre uhensigtmessit"
+  },
+  {
+    "category": "Bek. euf. stoffer",
+    "code": "§3:1",
+    "title": "Narkotikaproduktion",
+    "price_dkk": 16500,
+    "points": 0,
+    "prison_months": 25,
+    "description": "Min 12 Mdr"
+  },
+  {
+    "category": "Bek. euf. stoffer",
+    "code": "§3:2",
+    "title": "Besiddelse af narkotika",
+    "price_dkk": 500,
+    "points": 0,
+    "prison_months": 1,
+    "description": "Har stoffer i lommerne el.lign enhed, 500kr pr. enhed og pr 10 enhed 1 mnd Fængsel"
+  },
+  {
+    "category": "Bek. euf. stoffer",
+    "code": "§3:3",
+    "title": "Stoffer i køretøj",
+    "price_dkk": 500,
+    "points": 0,
+    "prison_months": 1,
+    "description": "Har stoffer i sit køretøj - enhed 500 kroner pr. enhed. Og pr 10 enhed 1 mnd Fængsel"
+  },
+  {
+    "category": "Bek. euf. stoffer",
+    "code": "§3:4",
+    "title": "Salgs af stoffer",
+    "price_dkk": 12500,
+    "points": 0,
+    "prison_months": 14,
+    "description": "Salg af stoffer til andre"
+  },
+  {
+    "category": "Våben og Knivlov",
+    "code": "§4:1",
+    "title": "Klasse A våben - Store rifler, shotguns el.lign.",
+    "price_dkk": 200000,
+    "points": 0,
+    "prison_months": 50,
+    "description": "Overtrædelse af våbenbekendtgørelsen"
+  },
+  {
+    "category": "Våben og Knivlov",
+    "code": "§4:2",
+    "title": "Klasse B Våben - SMGer og Automatiske pistol som AP-Pistol",
+    "price_dkk": 100000,
+    "points": 0,
+    "prison_months": 45,
+    "description": "Overtrædelse af Våbenbekendtgørelsen"
+  },
+  {
+    "category": "Våben og Knivlov",
+    "code": "§4:3",
+    "title": "Klasse C våben - Semi automatiske pistoler",
+    "price_dkk": 75000,
+    "points": 0,
+    "prison_months": 25,
+    "description": "Overtrædelse af Våbenbekendtgørelsen"
+  },
+  {
+    "category": "Våben og Knivlov",
+    "code": "§4:4",
+    "title": "Klasse D våben - Blankvåben, knive, golfkøller.",
+    "price_dkk": 50000,
+    "points": 0,
+    "prison_months": 15,
+    "description": "Overtrædelse af våbenbekendtgørelsen"
+  },
+  {
+    "category": "Ordensbekendtgørelsen",
+    "code": "§5:1",
+    "title": "Overtrædelsen af den offentligt ro og orden",
+    "price_dkk": 5000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Overtrædelsen af Ordensbekendtgørelsen"
+  },
+  {
+    "category": "Ordensbekendtgørelsen",
+    "code": "§5:2",
+    "title": "Forstyrrelse af off. orden.",
+    "price_dkk": 7500,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Slagsmål, skrigen, råben eller anden støjende, voldelig, fornærmelig eller lignende optræden, der er egnet til at forstyrre den offentlige orden, må ikke finde sted."
+  },
+  {
+    "category": "Ordensbekendtgørelsen",
+    "code": "§5:3",
+    "title": "Forstyrrelse af off. orden.",
+    "price_dkk": 7500,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Det er forbudt at udvise uanstændig eller anstødelig opførsel, der er egnet til at forulempe andre eller vække offentlig forargelse"
+  },
+  {
+    "category": "Ordensbekendtgørelsen",
+    "code": "§5:4",
+    "title": "Forstyrrelse af off. orden.",
+    "price_dkk": 7500,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Det er forbudt at færdes så påvirket af alkohol eller andre berusende eller bedøvende midler, at det kan give anledning til ulempe for andre"
+  },
+  {
+    "category": "Ordensbekendtgørelsen",
+    "code": "§5:5",
+    "title": "Forstyrrelse af off. orden.",
+    "price_dkk": 7500,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Begås de i stk. 1 og 2 nævnte handlinger på steder, hvortil der ikke er almindelig adgang, og medfører de forstyrrelser af den offentlige orden, kan politiet påbyde, at de bringes til ophør"
+  },
+  {
+    "category": "Kommune straf",
+    "code": "§6:1",
+    "title": "Kommune sigtelse ved (Combat-logging)",
+    "price_dkk": 15000,
+    "points": 0,
+    "prison_months": 0,
+    "description": "Denne bruges hvis en person flyver ud af byen uden at ha fået sin fængelsel dom hvis personen bruger FX ( Jeg skal noget i hovede osv = Meta ) bøden er pr Mnd. Denne straf skal godkendes af en kommune medarbejder inden den må bruges."
+  }
+]
+
