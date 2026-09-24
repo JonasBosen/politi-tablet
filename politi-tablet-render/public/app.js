@@ -34,7 +34,7 @@ function table(headers,rows,empty="Ingen poster at vise"){
 }
 function shell(title,subtitle,body,tools=""){
   const p=location.hash.slice(1)||"dashboard";
-  document.querySelectorAll("#nav [data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===p));
+  document.querySelectorAll("[data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===p));
   const pageClass=Object.hasOwn(pageTitles,p)?p:"dashboard";
   content.dataset.page=pageClass;
   content.innerHTML=`<div class="page-head page-head-${pageClass}"><div><div class="eyebrow">POLITI · SAGSSTYRING</div><h1>${title}</h1>${subtitle?`<p class="muted">${subtitle}</p>`:""}</div>${tools}</div>${body}`;
@@ -229,7 +229,7 @@ function applyAppearance(p={}){
   root.style.setProperty("--surface-3","color-mix(in srgb, var(--user-tablet-color) 77%, white)");
 }
 async function showApp(){try{applyAppearance(await api("/api/preferences"))}catch{}updateUser();$("#login").classList.add("hidden");$("#app").classList.remove("hidden");route(location.hash.slice(1)||"dashboard")}
-document.querySelectorAll("#nav [data-page]").forEach(b=>b.onclick=()=>{history.replaceState(null,"",location.pathname+location.hash);location.hash=b.dataset.page});
+document.querySelectorAll("[data-page]").forEach(b=>b.onclick=()=>{const menu=b.closest(".profile-menu");if(menu)menu.open=false;history.replaceState(null,"",location.pathname+location.hash);location.hash=b.dataset.page});
 window.addEventListener("hashchange",()=>route(location.hash.slice(1)||"dashboard"));
 window.addEventListener("popstate",()=>route(location.hash.slice(1)||"dashboard"));
 window.addEventListener("unhandledrejection",e=>{e.preventDefault();toast(e.reason?.message||"Handlingen kunne ikke gennemføres","error")});
