@@ -4,40 +4,48 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>POLITI Tablet</title>
+<meta name="theme-color" content="#181b22">
+<meta name="description" content="POLITI Tablet — politiets sags- og personregistre">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <div id="login" class="login-screen">
   <div class="login-card">
+    <div class="login-emblem">✦</div>
     <div class="brand">POLITI</div>
-    <p class="muted">Politi Tablet</p>
+    <p class="muted login-subtitle">INTERN POLITIPLATFORM</p>
     <form id="loginForm">
-      <input id="username" placeholder="Brugernavn" value="admin" required>
-      <input id="password" placeholder="Adgangskode" type="password" value="admin123" required>
-      <button>Log ind</button>
+      <label>Brugernavn<input id="username" placeholder="Indtast brugernavn" autocomplete="username" required></label>
+      <label>Adgangskode<input id="password" placeholder="Indtast adgangskode" type="password" autocomplete="current-password" required></label>
+      <button class="login-submit">Log ind <span>→</span></button>
       <div id="loginError" class="error"></div>
     </form>
+    <div class="login-foot">Sikker adgang · POLITI Tablet</div>
   </div>
 </div>
 
 <div id="app" class="hidden">
 <header>
-  <div class="brand">POLITI</div>
+  <a class="brand" href="#dashboard" aria-label="POLITI hjem">POLITI<span class="brand-dot">.</span></a>
+  <span class="header-divider"></span>
   <nav id="nav">
-    <button data-page="dashboard">⌂ Home</button>
-    <button data-page="persons">♙ Person Register</button>
-    <button data-page="vehicles">▣ Køretøjs Database</button>
-    <button data-page="warrants">⌕ Efterlysninger</button>
-    <button data-page="board">◈ Opslagstavle</button>
-    <button data-page="fines">▤ Bødetakster</button>
-    <button data-page="employees">♙ Ansatte</button>
-    <button data-page="applications">▱ Ansøgninger</button>
-    <button data-page="logs" id="logsNav" class="adminOnly">☷ Logs</button>
-    <button data-page="settings" id="settingsNav" class="adminOnly">⚙ Indstillinger</button>
+    <button data-page="dashboard"><span>⌂</span> Dashboard</button>
+    <button data-page="cases"><span>◫</span> Sager</button>
+    <button data-page="persons"><span>♙</span> Personer</button>
+    <button data-page="vehicles"><span>▣</span> Køretøjer</button>
+    <button data-page="warrants" data-feature="warrants_enabled"><span>⌕</span> Efterlysninger</button>
+    <button data-page="board" data-feature="board_enabled"><span>◈</span> Opslagstavle</button>
+    <button data-page="fines"><span>▤</span> Bødetakster</button>
+    <button data-page="employees"><span>♟</span> Ansatte</button>
+    <button data-page="applications" data-feature="applications_enabled"><span>▱</span> Ansøgninger</button>
+    <button data-page="logs" class="adminOnly"><span>☷</span> Logs</button>
+    <button data-page="settings" class="adminOnly"><span>⚙</span> Indstillinger</button>
   </nav>
-  <div class="profile"><span id="userName"></span><button id="logout">Log ud</button></div>
+  <div class="profile"><span class="avatar avatar-sm" id="profileInitials"></span><span id="userName"></span><button id="logout" title="Log ud" aria-label="Log ud">↪</button></div>
 </header>
 <main id="content"></main>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<footer class="app-footer"><span>POLITI Tablet <i>·</i> Sikkert internt system</span><span>Kun til autoriseret brug</span></footer>
 </div>
 <script src="/app.js"></script>
 </body>

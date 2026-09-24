@@ -7,6 +7,16 @@ const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// Render terminates TLS at its proxy; trust its forwarded HTTPS header so
+// secure session cookies are issued on production requests.
+app.set("trust proxy", 1);
+
+// Express 4 does not forward rejected async route handlers to error middleware.
+const wrapAsync = handler => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
+for (const method of ["get", "post", "patch", "delete"]) {
+  const original = app[method].bind(app);
+  app[method] = (route, ...handlers) => original(route, ...handlers.map(h => h.length === 3 ? h : wrapAsync(h)));
+}
 
 if (!process.env.DATABASE_URL) {
   console.warn("DATABASE_URL is missing. Configure it in Render.");
@@ -194,6 +204,13 @@ async function logAction(userId, action, title, description = "") {
     [userId, action, title, description]);
 }
 
+function requireFeature(key) {
+  return (req,res,next) => q("SELECT value FROM settings WHERE key=$1",[key]).then(r=>{
+    if(r.rows[0]?.value==="false") return res.status(403).json({error:"Denne funktion er slået fra i systemindstillingerne"});
+    next();
+  }).catch(next);
+}
+
 app.get("/api/health", async (_req, res) => {
   try { await q("SELECT 1"); res.json({ ok: true, database: "connected" }); }
   catch (e) { res.status(503).json({ ok: false, error: e.message }); }
@@ -217,6 +234,11 @@ app.post("/api/logout", requireAuth, async (req,res) => {
 
 app.get("/api/me", requireAuth, (req,res) => res.json({ user: req.session.user }));
 
+app.get("/api/public-settings", async (_req,res) => {
+  const r=await q("SELECT key,value FROM settings WHERE key = ANY($1)",[["site_name","applications_enabled","warrants_enabled","board_enabled","custom_fines_enabled"]]);
+  res.json(Object.fromEntries(r.rows.map(x=>[x.key,x.value])));
+});
+
 app.get("/api/dashboard", requireAuth, async (_req,res) => {
   const [persons, vehicles, cases, warrants, employees, apps] = await Promise.all([
     q("SELECT COUNT(*)::int c FROM persons"),
@@ -226,10 +248,24 @@ app.get("/api/dashboard", requireAuth, async (_req,res) => {
     q("SELECT COUNT(*)::int c FROM users WHERE active=true"),
     q("SELECT COUNT(*)::int c FROM applications WHERE status='Afventer'")
   ]);
+  const [recentCases, pendingApps, recentPosts] = await Promise.all([
+    q(`SELECT c.id,c.case_number,c.title,c.fine_dkk,c.prison_days,c.created_at,p.name person_name,u.full_name officer_name
+       FROM cases c LEFT JOIN persons p ON p.id=c.person_id LEFT JOIN users u ON u.id=c.officer_id ORDER BY c.created_at DESC LIMIT 5`),
+    q("SELECT id,applicant_name,type,status,created_at FROM applications WHERE status='Afventer' ORDER BY created_at DESC LIMIT 5"),
+    q("SELECT id,title,body,pinned,created_at FROM board_posts ORDER BY pinned DESC,created_at DESC LIMIT 3")
+  ]);
   res.json({
     persons: persons.rows[0].c, vehicles: vehicles.rows[0].c, cases: cases.rows[0].c,
-    warrants: warrants.rows[0].c, employees: employees.rows[0].c, applications: apps.rows[0].c
+    warrants: warrants.rows[0].c, employees: employees.rows[0].c, applications: apps.rows[0].c,
+    recentCases: recentCases.rows, pendingApplications: pendingApps.rows, announcements: recentPosts.rows
   });
+});
+
+app.get("/api/cases", requireAuth, async (_req,res) => {
+  const r=await q(`SELECT c.*,p.name person_name,u.full_name officer_name FROM cases c
+                   LEFT JOIN persons p ON p.id=c.person_id LEFT JOIN users u ON u.id=c.officer_id
+                   ORDER BY c.created_at DESC LIMIT 250`);
+  res.json(r.rows);
 });
 
 app.get("/api/persons", requireAuth, async (req,res) => {
@@ -245,6 +281,14 @@ app.post("/api/persons", requireAuth, async (req,res) => {
                      [name,address||null,phone||null,birth_date||null,gender||null,notes||null]);
   await logAction(req.session.user.id,"CREATE","Opret person",`Person ${name}`);
   res.status(201).json(r.rows[0]);
+});
+
+app.patch("/api/persons/:id", requireAuth, async (req,res) => {
+  const {name,address,phone,birth_date,gender,notes}=req.body;
+  const r=await q(`UPDATE persons SET name=$1,address=$2,phone=$3,birth_date=$4,gender=$5,notes=$6 WHERE id=$7 RETURNING *`,
+    [name,address||null,phone||null,birth_date||null,gender||null,notes||null,req.params.id]);
+  if(!r.rowCount) return res.status(404).json({error:"Person ikke fundet"});
+  await logAction(req.session.user.id,"UPDATE","Opdater person",`Person ${name}`); res.json(r.rows[0]);
 });
 
 app.get("/api/persons/:id", requireAuth, async (req,res) => {
@@ -285,7 +329,15 @@ app.post("/api/vehicles", requireAuth, async (req,res) => {
   res.status(201).json(r.rows[0]);
 });
 
-app.get("/api/warrants", requireAuth, async (_req,res) => {
+app.patch("/api/vehicles/:id", requireAuth, async (req,res) => {
+  const {plate,owner_id,make,model,category,color,status="Normal",notes}=req.body;
+  const r=await q(`UPDATE vehicles SET plate=$1,owner_id=$2,make=$3,model=$4,category=$5,color=$6,status=$7,notes=$8 WHERE id=$9 RETURNING *`,
+    [plate,owner_id||null,make||null,model||null,category||null,color||null,status,notes||null,req.params.id]);
+  if(!r.rowCount) return res.status(404).json({error:"Køretøj ikke fundet"});
+  await logAction(req.session.user.id,"UPDATE","Opdater køretøj",plate); res.json(r.rows[0]);
+});
+
+app.get("/api/warrants", requireAuth, requireFeature("warrants_enabled"), async (_req,res) => {
   const r=await q(`SELECT w.*, p.name person_name, v.plate FROM warrants w
                    LEFT JOIN persons p ON p.id=w.person_id
                    LEFT JOIN vehicles v ON v.id=w.vehicle_id
@@ -293,7 +345,7 @@ app.get("/api/warrants", requireAuth, async (_req,res) => {
   res.json(r.rows);
 });
 
-app.post("/api/warrants", requireAuth, async (req,res) => {
+app.post("/api/warrants", requireAuth, requireFeature("warrants_enabled"), async (req,res) => {
   const {person_id,vehicle_id,type="Person",title,description}=req.body;
   const r=await q(`INSERT INTO warrants(person_id,vehicle_id,type,title,description,created_by)
                    VALUES($1,$2,$3,$4,$5,$6) RETURNING *`,
@@ -302,22 +354,72 @@ app.post("/api/warrants", requireAuth, async (req,res) => {
   res.status(201).json(r.rows[0]);
 });
 
+app.patch("/api/warrants/:id", requireAuth, requireFeature("warrants_enabled"), async (req,res) => {
+  const r=await q("UPDATE warrants SET active=$1 WHERE id=$2 RETURNING *",[!!req.body.active,req.params.id]);
+  if(!r.rowCount) return res.status(404).json({error:"Efterlysning ikke fundet"});
+  await logAction(req.session.user.id,"UPDATE",r.rows[0].active?"Genåbn efterlysning":"Luk efterlysning",String(req.params.id));
+  res.json(r.rows[0]);
+});
+
 app.get("/api/fines", requireAuth, async (req,res) => {
   const term=`%${req.query.search||""}%`;
   const r=await q(`SELECT * FROM fines WHERE title ILIKE $1 OR category ILIKE $1 OR COALESCE(code,'') ILIKE $1 ORDER BY category,title`,[term]);
   res.json(r.rows);
 });
 
-app.get("/api/board", requireAuth, async (_req,res) => {
+app.post("/api/fines", requireAdmin, async (req,res) => {
+  const enabled=await q("SELECT value FROM settings WHERE key='custom_fines_enabled'");
+  if(enabled.rows[0]?.value==="false") return res.status(403).json({error:"Egne bødetakster er slået fra i indstillingerne"});
+  const {category,code,title,price_dkk=0,points=0,description=""}=req.body;
+  const r=await q("INSERT INTO fines(category,code,title,price_dkk,points,description) VALUES($1,$2,$3,$4,$5,$6) RETURNING *",
+    [category,code||null,title,Number(price_dkk),Number(points),description]);
+  await logAction(req.session.user.id,"CREATE","Opret bødetakst",title); res.status(201).json(r.rows[0]);
+});
+app.patch("/api/fines/:id", requireAdmin, async (req,res) => {
+  const enabled=await q("SELECT value FROM settings WHERE key='custom_fines_enabled'");
+  if(enabled.rows[0]?.value==="false") return res.status(403).json({error:"Egne bødetakster er slået fra i indstillingerne"});
+  const {category,code,title,price_dkk=0,points=0,description=""}=req.body;
+  const r=await q("UPDATE fines SET category=$1,code=$2,title=$3,price_dkk=$4,points=$5,description=$6 WHERE id=$7 RETURNING *",
+    [category,code||null,title,Number(price_dkk),Number(points),description,req.params.id]);
+  if(!r.rowCount) return res.status(404).json({error:"Bødetakst ikke fundet"});
+  await logAction(req.session.user.id,"UPDATE","Opdater bødetakst",title); res.json(r.rows[0]);
+});
+app.delete("/api/fines/:id", requireAdmin, async (req,res) => {
+  const enabled=await q("SELECT value FROM settings WHERE key='custom_fines_enabled'");
+  if(enabled.rows[0]?.value==="false") return res.status(403).json({error:"Egne bødetakster er slået fra i indstillingerne"});
+  const r=await q("DELETE FROM fines WHERE id=$1 RETURNING title",[req.params.id]);
+  if(!r.rowCount) return res.status(404).json({error:"Bødetakst ikke fundet"});
+  await logAction(req.session.user.id,"DELETE","Slet bødetakst",r.rows[0].title); res.json({ok:true});
+});
+
+app.get("/api/board", requireAuth, requireFeature("board_enabled"), async (_req,res) => {
   const r=await q(`SELECT b.*,u.full_name author_name,u.rank FROM board_posts b LEFT JOIN users u ON u.id=b.author_id ORDER BY b.pinned DESC,b.created_at DESC`);
   res.json(r.rows);
 });
 
-app.post("/api/board", requireAuth, async (req,res) => {
+app.post("/api/board", requireAuth, requireFeature("board_enabled"), async (req,res) => {
   const r=await q(`INSERT INTO board_posts(title,body,author_id,pinned) VALUES($1,$2,$3,$4) RETURNING *`,
     [req.body.title,req.body.body,req.session.user.id,!!req.body.pinned]);
   await logAction(req.session.user.id,"CREATE","Nyt opslag",req.body.title);
   res.status(201).json(r.rows[0]);
+});
+
+app.patch("/api/board/:id", requireAuth, requireFeature("board_enabled"), async (req,res) => {
+  const existing=await q("SELECT author_id FROM board_posts WHERE id=$1",[req.params.id]);
+  if(!existing.rowCount) return res.status(404).json({error:"Opslag ikke fundet"});
+  if(req.session.user.role!=="admin" && existing.rows[0].author_id!==req.session.user.id) return res.status(403).json({error:"Du kan kun redigere dine egne opslag"});
+  const {title,body,pinned=false}=req.body;
+  const r=await q("UPDATE board_posts SET title=$1,body=$2,pinned=$3 WHERE id=$4 RETURNING *",[title,body,!!pinned,req.params.id]);
+  if(!r.rowCount) return res.status(404).json({error:"Opslag ikke fundet"});
+  await logAction(req.session.user.id,"UPDATE","Opdater opslag",title); res.json(r.rows[0]);
+});
+app.delete("/api/board/:id", requireAuth, requireFeature("board_enabled"), async (req,res) => {
+  const existing=await q("SELECT author_id FROM board_posts WHERE id=$1",[req.params.id]);
+  if(!existing.rowCount) return res.status(404).json({error:"Opslag ikke fundet"});
+  if(req.session.user.role!=="admin" && existing.rows[0].author_id!==req.session.user.id) return res.status(403).json({error:"Du kan kun slette dine egne opslag"});
+  const r=await q("DELETE FROM board_posts WHERE id=$1 RETURNING title",[req.params.id]);
+  if(!r.rowCount) return res.status(404).json({error:"Opslag ikke fundet"});
+  await logAction(req.session.user.id,"DELETE","Slet opslag",r.rows[0].title); res.json({ok:true});
 });
 
 app.get("/api/employees", requireAuth, async (_req,res) => {
@@ -325,9 +427,39 @@ app.get("/api/employees", requireAuth, async (_req,res) => {
   res.json(r.rows);
 });
 
-app.get("/api/applications", requireAuth, async (_req,res) => {
+app.post("/api/employees", requireAdmin, async (req,res) => {
+  const {username,password,full_name,rank="Betjent",badge_number,role="officer"}=req.body;
+  if(!password || password.length<8) return res.status(400).json({error:"Adgangskoden skal være mindst 8 tegn"});
+  const hash=await bcrypt.hash(password,12);
+  const r=await q(`INSERT INTO users(username,password_hash,full_name,rank,badge_number,role) VALUES($1,$2,$3,$4,$5,$6)
+    RETURNING id,username,full_name,rank,badge_number,role,active,created_at`,[username,hash,full_name,rank,badge_number||null,role]);
+  await logAction(req.session.user.id,"CREATE","Opret ansat",full_name); res.status(201).json(r.rows[0]);
+});
+app.patch("/api/employees/:id", requireAdmin, async (req,res) => {
+  const {full_name,rank,badge_number,role,active}=req.body;
+  if(String(req.params.id)===String(req.session.user.id) && (role!=="admin" || !active)) return res.status(400).json({error:"Du kan ikke fjerne dine egne administratorrettigheder"});
+  const r=await q(`UPDATE users SET full_name=$1,rank=$2,badge_number=$3,role=$4,active=$5 WHERE id=$6
+    RETURNING id,username,full_name,rank,badge_number,role,active,created_at`,
+    [full_name,rank,badge_number||null,role,!!active,req.params.id]);
+  if(!r.rowCount) return res.status(404).json({error:"Ansat ikke fundet"});
+  await logAction(req.session.user.id,"UPDATE","Opdater ansat",full_name); res.json(r.rows[0]);
+});
+
+app.get("/api/applications", requireAuth, requireFeature("applications_enabled"), async (_req,res) => {
   const r=await q("SELECT * FROM applications ORDER BY created_at DESC");
   res.json(r.rows);
+});
+app.post("/api/applications", requireAuth, requireFeature("applications_enabled"), async (req,res) => {
+  const {applicant_name,type="Civilpolitiet",message=""}=req.body;
+  const r=await q("INSERT INTO applications(applicant_name,type,message) VALUES($1,$2,$3) RETURNING *",[applicant_name,type,message]);
+  await logAction(req.session.user.id,"CREATE","Ny ansøgning",applicant_name); res.status(201).json(r.rows[0]);
+});
+app.patch("/api/applications/:id", requireAuth, requireFeature("applications_enabled"), async (req,res) => {
+  const allowed=["Afventer","Godkendt","Afvist"];
+  if(!allowed.includes(req.body.status)) return res.status(400).json({error:"Ugyldig status"});
+  const r=await q("UPDATE applications SET status=$1 WHERE id=$2 RETURNING *",[req.body.status,req.params.id]);
+  if(!r.rowCount) return res.status(404).json({error:"Ansøgning ikke fundet"});
+  await logAction(req.session.user.id,"UPDATE","Behandl ansøgning",`${r.rows[0].applicant_name}: ${req.body.status}`); res.json(r.rows[0]);
 });
 
 app.get("/api/logs", requireAdmin, async (_req,res) => {
@@ -350,6 +482,14 @@ app.post("/api/settings", requireAdmin, async (req,res) => {
 });
 
 app.get("*", (_req,res) => res.sendFile(path.join(__dirname,"public","index.html")));
+
+app.use((err,req,res,_next)=>{
+  console.error("Request failed:",err);
+  if(res.headersSent) return;
+  const status=err.status || (err.code==="23505"?409:500);
+  const error=status===409?"En post med samme identifikation findes allerede.":status<500?err.message:"Der opstod en serverfejl. Prøv igen.";
+  res.status(status).json({error});
+});
 
 initDb()
   .then(()=>app.listen(PORT,()=>console.log(`POLITI Tablet running on port ${PORT}`)))

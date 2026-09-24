@@ -3,6 +3,7 @@ services:
     name: politi-tablet
     runtime: node
     plan: free
+    rootDir: politi-tablet-render
     buildCommand: npm install
     startCommand: npm start
     envVars:
