@@ -214,7 +214,7 @@ async function cases(){const rows=await api("/api/cases");shell("Sager","Oprette
 const pages={dashboard,persons,vehicles,fleet,calls,warrants,board,fines,employees,applications,logs,settings,cases};
 async function route(p){try{const feature={applications:"applications_enabled",warrants:"warrants_enabled",board:"board_enabled"}[p];if(feature&&String(publicSettings[feature]??"true")==="false"){toast("Denne funktion er slået fra i systemindstillingerne","error");p="dashboard"}await (pages[p]||dashboard)()}catch(e){content.innerHTML=`<div class="error-panel"><strong>Kunne ikke indlæse siden</strong><p>${esc(e.message)}</p><button class="btn" onclick="route('${esc(p)}')">Prøv igen</button></div>`}}
 function updateUser(){if(!me)return;$("#userName").textContent=`${me.full_name} · ${me.rank}`;$("#profileInitials").textContent=initials(me.full_name);document.querySelectorAll(".adminOnly").forEach(x=>x.classList.toggle("hidden",me.role!=="admin"));}
-function applyPublicSettings(s={}){publicSettings=s;const name=s.site_name||"POLITI";document.title=`${name} Tablet`;document.querySelectorAll(".brand").forEach(el=>{el.textContent=name});document.querySelectorAll("[data-feature]").forEach(el=>el.classList.toggle("hidden",String(s[el.dataset.feature]??"true")==="false"));}
+function applyPublicSettings(s={}){publicSettings=s;const name=s.site_name==="Dream Politi"||!s.site_name?"POLITI":s.site_name;document.title=`${name} Tablet`;document.querySelectorAll(".brand").forEach(el=>{el.textContent=name});document.querySelectorAll("[data-feature]").forEach(el=>el.classList.toggle("hidden",String(s[el.dataset.feature]??"true")==="false"));}
 function applyAppearance(p={}){
   const value={...defaultAppearance,...p};
   const root=document.documentElement;
