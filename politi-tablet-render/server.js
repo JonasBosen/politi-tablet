@@ -159,6 +159,16 @@ async function initDb() {
     ALTER TABLE cases ADD COLUMN IF NOT EXISTS penalties JSONB NOT NULL DEFAULT '[]'::jsonb;
     ALTER TABLE cases ADD COLUMN IF NOT EXISTS prison_months INTEGER NOT NULL DEFAULT 0;
 
+    CREATE TABLE IF NOT EXISTS seized_items (
+      id SERIAL PRIMARY KEY,
+      person_id INTEGER NOT NULL REFERENCES persons(id) ON DELETE CASCADE,
+      case_id INTEGER REFERENCES cases(id) ON DELETE SET NULL,
+      item_name VARCHAR(180) NOT NULL,
+      description TEXT,
+      officer_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS warrants (
       id SERIAL PRIMARY KEY,
       person_id INTEGER REFERENCES persons(id) ON DELETE CASCADE,
@@ -228,9 +238,24 @@ async function initDb() {
     );
   }
 
-  await q(`INSERT INTO ranks(name,level)
-           SELECT DISTINCT BTRIM(rank),0 FROM users WHERE NULLIF(BTRIM(rank),'') IS NOT NULL
-           ON CONFLICT(name) DO NOTHING`);
+  const rankLadder = await q("SELECT value FROM settings WHERE key='rank_ladder_initialized'");
+  if (rankLadder.rows[0]?.value !== "true") {
+    const defaultRanks = [
+      {name:"Politi-Elev",level:1},{name:"Politibetjent",level:2},{name:"Politiassistent",level:3},
+      {name:"Politiassistent 1 Grad",level:4},{name:"Politikommissær",level:5},{name:"Vicepolitiinspektør",level:6},
+      {name:"Vicepolitimester",level:7},{name:"Chefpolitiinspektør",level:8},{name:"Politidirektør",level:9},
+      {name:"Rigspolitichef",level:10},{name:"Admin",level:11}
+    ];
+    await q(`INSERT INTO ranks(name,level)
+             SELECT r.name,r.level FROM jsonb_to_recordset($1::jsonb) AS r(name text,level integer)
+             ON CONFLICT(name) DO UPDATE SET level=EXCLUDED.level`, [JSON.stringify(defaultRanks)]);
+    await q(`UPDATE users SET rank=CASE
+               WHEN role='admin' THEN 'Admin'
+               WHEN rank IN ('Politi-Elev','Politibetjent','Politiassistent','Politiassistent 1 Grad','Politikommissær','Vicepolitiinspektør','Vicepolitimester','Chefpolitiinspektør','Politidirektør','Rigspolitichef','Admin') THEN rank
+               ELSE 'Politi-Elev' END`);
+    await q("DELETE FROM ranks WHERE level NOT BETWEEN 1 AND 11 OR name NOT IN ('Politi-Elev','Politibetjent','Politiassistent','Politiassistent 1 Grad','Politikommissær','Vicepolitiinspektør','Vicepolitimester','Chefpolitiinspektør','Politidirektør','Rigspolitichef','Admin')");
+    await q("INSERT INTO settings(key,value) VALUES('rank_ladder_initialized','true') ON CONFLICT(key) DO UPDATE SET value='true'");
+  }
 
   const p = await q("SELECT COUNT(*)::int AS c FROM persons");
   if (p.rows[0].c === 0) {
@@ -256,24 +281,41 @@ async function initDb() {
            WHERE NOT EXISTS (SELECT 1 FROM fines f WHERE f.category=tariff.category AND f.code=tariff.code)`,
            [JSON.stringify(tariffRows)]);
 
-  const s = await q("SELECT COUNT(*)::int AS c FROM settings");
-  if (s.rows[0].c === 0) {
-    await q(`INSERT INTO settings(key,value) VALUES
-      ('language','da'),
-      ('site_name','POLITI'),
-      ('frakendelse_years','3')`);
-  }
+  await q(`INSERT INTO settings(key,value) VALUES
+    ('language','da'),('site_name','POLITI'),('frakendelse_years','3')
+    ON CONFLICT(key) DO NOTHING`);
 }
 
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   if (!req.session.user) return res.status(401).json({ error: "Ikke logget ind" });
-  next();
+  try {
+    const result=await q("SELECT active FROM users WHERE id=$1",[req.session.user.id]);
+    if(!result.rowCount||!result.rows[0].active){req.session.destroy(()=>{});return res.status(401).json({error:"Brugeren er ikke aktiv"});}
+    next();
+  } catch(error) { next(error); }
 }
-function requireAdmin(req, res, next) {
-  if (!req.session.user || req.session.user.role !== "admin") {
-    return res.status(403).json({ error: "Ingen adgang" });
-  }
-  next();
+async function accessFor(req) {
+  if (!req.session.user) return null;
+  const result=await q(`SELECT u.role,COALESCE(r.level,0)::int rank_level
+                        FROM users u LEFT JOIN ranks r ON r.name=u.rank
+                        WHERE u.id=$1 AND u.active=true`,[req.session.user.id]);
+  if(!result.rowCount)return null;
+  const user=result.rows[0];
+  return {...user,full:user.role==="admin"||user.rank_level>=10,staffManager:user.role==="admin"||user.rank_level>=8};
+}
+function requireRankAtLeast(level) {
+  return async (req,res,next)=>{
+    try {
+      const access=await accessFor(req);
+      if(!access)return res.status(401).json({error:"Brugeren er ikke aktiv eller logget ind"});
+      req.access=access;
+      if(access.role!=="admin"&&access.rank_level<level)return res.status(403).json({error:"Du har ikke den nødvendige rang til denne handling"});
+      next();
+    } catch(error) { next(error); }
+  };
+}
+function requireAdmin(req,res,next) {
+  return requireRankAtLeast(10)(req,res,next);
 }
 
 async function logAction(userId, action, title, description = "") {
@@ -350,7 +392,8 @@ app.post("/api/login", async (req, res) => {
     return res.status(401).json({ error: "Forkert brugernavn eller adgangskode" });
   }
   const u = r.rows[0];
-  req.session.user = { id: u.id, username: u.username, full_name: u.full_name, rank: u.rank, badge_number: u.badge_number, role: u.role };
+  const access=await q("SELECT COALESCE(level,0)::int rank_level FROM ranks WHERE name=$1",[u.rank]);
+  req.session.user = { id: u.id, username: u.username, full_name: u.full_name, rank: u.rank, badge_number: u.badge_number, role: u.role, rank_level:access.rows[0]?.rank_level||0 };
   await logAction(u.id, "LOGIN", "Login", `Bruger ${u.username} loggede ind`);
   res.json({ user: req.session.user });
 });
@@ -359,7 +402,13 @@ app.post("/api/logout", requireAuth, async (req,res) => {
   req.session.destroy(() => res.json({ ok: true }));
 });
 
-app.get("/api/me", requireAuth, (req,res) => res.json({ user: req.session.user }));
+app.get("/api/me", requireAuth, async (req,res) => {
+  const result=await q(`SELECT u.id,u.username,u.full_name,u.rank,u.badge_number,u.role,u.active,COALESCE(r.level,0)::int rank_level
+                        FROM users u LEFT JOIN ranks r ON r.name=u.rank WHERE u.id=$1 AND u.active=true`,[req.session.user.id]);
+  if(!result.rowCount){req.session.destroy(()=>{});return res.status(401).json({error:"Brugeren er ikke aktiv"});}
+  const user=result.rows[0];req.session.user={...req.session.user,...user};
+  res.json({user:{...user,full:user.role==="admin"||user.rank_level>=10,staff_manager:user.role==="admin"||user.rank_level>=8}});
+});
 
 app.get("/api/preferences", requireAuth, async (req,res) => {
   const r=await q("SELECT font_scale,text_color,tablet_color FROM user_preferences WHERE user_id=$1",[req.session.user.id]);
@@ -442,12 +491,27 @@ app.patch("/api/persons/:id", requireAuth, async (req,res) => {
 app.get("/api/persons/:id", requireAuth, async (req,res) => {
   const p = await q("SELECT * FROM persons WHERE id=$1",[req.params.id]);
   if (!p.rowCount) return res.status(404).json({error:"Person ikke fundet"});
-  const [cases, vehicles, warrants] = await Promise.all([
+  const [cases, vehicles, warrants, seizedItems] = await Promise.all([
     q(`SELECT c.*, u.full_name officer_name FROM cases c LEFT JOIN users u ON u.id=c.officer_id WHERE person_id=$1 ORDER BY c.created_at DESC`,[req.params.id]),
     q("SELECT * FROM vehicles WHERE owner_id=$1 ORDER BY plate",[req.params.id]),
-    q("SELECT * FROM warrants WHERE person_id=$1 ORDER BY created_at DESC",[req.params.id])
+    q("SELECT * FROM warrants WHERE person_id=$1 ORDER BY created_at DESC",[req.params.id]),
+    q(`SELECT s.*,c.case_number,u.full_name officer_name FROM seized_items s
+       LEFT JOIN cases c ON c.id=s.case_id LEFT JOIN users u ON u.id=s.officer_id
+       WHERE s.person_id=$1 ORDER BY s.created_at DESC`,[req.params.id])
   ]);
-  res.json({person:p.rows[0],cases:cases.rows,vehicles:vehicles.rows,warrants:warrants.rows});
+  res.json({person:p.rows[0],cases:cases.rows,vehicles:vehicles.rows,warrants:warrants.rows,seizedItems:seizedItems.rows});
+});
+
+app.post("/api/persons/:id/evidence", requireRankAtLeast(2), async (req,res) => {
+  const itemName=String(req.body.item_name||"").trim(),description=String(req.body.description||"").trim();
+  const caseId=req.body.case_id?Number(req.body.case_id):null;
+  if(!itemName||itemName.length>180)return res.status(400).json({error:"Angiv genstanden, der beslaglægges"});
+  if(caseId!==null&&(!Number.isInteger(caseId)||caseId<1))return res.status(400).json({error:"Ugyldigt sagsnummer"});
+  if(caseId!==null){const linked=await q("SELECT 1 FROM cases WHERE id=$1 AND person_id=$2",[caseId,req.params.id]);if(!linked.rowCount)return res.status(400).json({error:"Sagen tilhører ikke denne person"});}
+  const r=await q(`INSERT INTO seized_items(person_id,case_id,item_name,description,officer_id)
+                   VALUES($1,$2,$3,$4,$5) RETURNING *`,[req.params.id,caseId,itemName,description||null,req.session.user.id]);
+  await logAction(req.session.user.id,"CREATE","Beslaglæg bevis",`${itemName} · person #${req.params.id}`);
+  res.status(201).json(r.rows[0]);
 });
 
 app.delete("/api/persons/:id/cases/:caseId", requireAuth, async (req,res) => {
@@ -457,11 +521,22 @@ app.delete("/api/persons/:id/cases/:caseId", requireAuth, async (req,res) => {
   const existing=await q("SELECT id,case_number,title,officer_id FROM cases WHERE id=$1 AND person_id=$2",[caseId,personId]);
   if(!existing.rowCount)return res.status(404).json({error:"Sagen blev ikke fundet på personen"});
   const record=existing.rows[0];
-  if(req.session.user.role!=="admin"&&Number(record.officer_id)!==Number(req.session.user.id))
-    return res.status(403).json({error:"Du kan kun slette dine egne sager"});
+  const access=await accessFor(req);
+  if(!access)return res.status(401).json({error:"Brugeren er ikke aktiv"});
+  if(!access.full&&access.rank_level<2)return res.status(403).json({error:"Elevrangen kan ikke slette sager"});
   await q("DELETE FROM cases WHERE id=$1 AND person_id=$2",[caseId,personId]);
   await logAction(req.session.user.id,"DELETE","Slet sag",`${record.case_number} · ${record.title}`);
   res.json({ok:true,case_number:record.case_number});
+});
+
+app.delete("/api/cases/:id", requireAuth, async (req,res) => {
+  const access=await accessFor(req);
+  if(!access)return res.status(401).json({error:"Brugeren er ikke aktiv"});
+  if(!access.full&&access.rank_level<2)return res.status(403).json({error:"Elevrangen kan ikke slette sager"});
+  const result=await q("DELETE FROM cases WHERE id=$1 RETURNING id,case_number,title",[req.params.id]);
+  if(!result.rowCount)return res.status(404).json({error:"Sagen blev ikke fundet"});
+  await logAction(req.session.user.id,"DELETE","Slet sag",`${result.rows[0].case_number} · ${result.rows[0].title}`);
+  res.json({ok:true,case_number:result.rows[0].case_number});
 });
 
 app.post("/api/persons/:id/cases", requireAuth, async (req,res) => {
@@ -508,6 +583,9 @@ app.get("/api/vehicles", requireAuth, async (req,res) => {
 
 app.post("/api/vehicles", requireAuth, async (req,res) => {
   const {plate,owner_id,make,model,category,color,status="Normal",notes}=req.body;
+  const access=await accessFor(req);
+  if(!access)return res.status(401).json({error:"Brugeren er ikke aktiv"});
+  if(status==="Beslaglagt"&&!access.full&&access.rank_level<2)return res.status(403).json({error:"Elevrangen kan ikke beslaglægge køretøjer"});
   const r=await q(`INSERT INTO vehicles(plate,owner_id,make,model,category,color,status,notes)
                    VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
                    [plate,owner_id||null,make||null,model||null,category||null,color||null,status,notes||null]);
@@ -517,6 +595,12 @@ app.post("/api/vehicles", requireAuth, async (req,res) => {
 
 app.patch("/api/vehicles/:id", requireAuth, async (req,res) => {
   const {plate,owner_id,make,model,category,color,status="Normal",notes}=req.body;
+  const access=await accessFor(req);
+  if(!access)return res.status(401).json({error:"Brugeren er ikke aktiv"});
+  if(!access.full&&access.rank_level<2){
+    const current=await q("SELECT status FROM vehicles WHERE id=$1",[req.params.id]);
+    if((status==="Beslaglagt"&&current.rows[0]?.status!=="Beslaglagt")||(current.rows[0]?.status==="Beslaglagt"&&status!=="Beslaglagt"))return res.status(403).json({error:"Elevrangen kan ikke beslaglægge eller frigive køretøjer"});
+  }
   const r=await q(`UPDATE vehicles SET plate=$1,owner_id=$2,make=$3,model=$4,category=$5,color=$6,status=$7,notes=$8 WHERE id=$9 RETURNING *`,
     [plate,owner_id||null,make||null,model||null,category||null,color||null,status,notes||null,req.params.id]);
   if(!r.rowCount) return res.status(404).json({error:"Køretøj ikke fundet"});
@@ -585,16 +669,16 @@ app.post("/api/calls", requireAuth, async (req,res) => {
   res.status(result.duplicate?200:201).json(result);
 });
 app.patch("/api/calls/:id", requireAuth, async (req,res) => {
-  const {action}=req.body||{};let r;
+  const {action}=req.body||{};let r;const access=await accessFor(req);if(!access)return res.status(401).json({error:"Brugeren er ikke aktiv"});
   if(action==="accept") {
     r=await q(`UPDATE dispatch_calls SET status='accepted',claimed_by=$1,accepted_at=COALESCE(accepted_at,NOW())
                WHERE id=$2 AND (status='pending' OR (status='accepted' AND claimed_by=$1)) RETURNING *`,[req.session.user.id,req.params.id]);
   } else if(action==="release") {
     r=await q(`UPDATE dispatch_calls SET status='pending',claimed_by=NULL,accepted_at=NULL WHERE id=$1 AND status='accepted'
-               AND (claimed_by=$2 OR $3='admin') RETURNING *`,[req.params.id,req.session.user.id,req.session.user.role]);
+               AND (claimed_by=$2 OR $3::boolean) RETURNING *`,[req.params.id,req.session.user.id,access.full]);
   } else if(action==="close") {
     r=await q(`UPDATE dispatch_calls SET status='closed',closed_at=NOW() WHERE id=$1 AND status<>'closed'
-               AND (claimed_by IS NULL OR claimed_by=$2 OR $3='admin') RETURNING *`,[req.params.id,req.session.user.id,req.session.user.role]);
+               AND (claimed_by IS NULL OR claimed_by=$2 OR $3::boolean) RETURNING *`,[req.params.id,req.session.user.id,access.full]);
   } else return res.status(400).json({error:"Vælg om opkaldet skal overtages, frigives eller afsluttes."});
   if(!r.rowCount)return res.status(409).json({error:"Opkaldet er allerede afsluttet eller håndteres af en anden medarbejder."});
   const title=action==="accept"?"Overtag opkald":action==="release"?"Frigiv opkald":"Afslut opkald";
@@ -720,7 +804,8 @@ app.post("/api/board", requireAuth, requireFeature("board_enabled"), async (req,
 app.patch("/api/board/:id", requireAuth, requireFeature("board_enabled"), async (req,res) => {
   const existing=await q("SELECT author_id FROM board_posts WHERE id=$1",[req.params.id]);
   if(!existing.rowCount) return res.status(404).json({error:"Opslag ikke fundet"});
-  if(req.session.user.role!=="admin" && existing.rows[0].author_id!==req.session.user.id) return res.status(403).json({error:"Du kan kun redigere dine egne opslag"});
+  const access=await accessFor(req);
+  if(!access?.full && existing.rows[0].author_id!==req.session.user.id) return res.status(403).json({error:"Du kan kun redigere dine egne opslag"});
   const {title,body,pinned=false}=req.body;
   const r=await q("UPDATE board_posts SET title=$1,body=$2,pinned=$3 WHERE id=$4 RETURNING *",[title,body,!!pinned,req.params.id]);
   if(!r.rowCount) return res.status(404).json({error:"Opslag ikke fundet"});
@@ -729,13 +814,14 @@ app.patch("/api/board/:id", requireAuth, requireFeature("board_enabled"), async 
 app.delete("/api/board/:id", requireAuth, requireFeature("board_enabled"), async (req,res) => {
   const existing=await q("SELECT author_id FROM board_posts WHERE id=$1",[req.params.id]);
   if(!existing.rowCount) return res.status(404).json({error:"Opslag ikke fundet"});
-  if(req.session.user.role!=="admin" && existing.rows[0].author_id!==req.session.user.id) return res.status(403).json({error:"Du kan kun slette dine egne opslag"});
+  const access=await accessFor(req);
+  if(!access?.full && existing.rows[0].author_id!==req.session.user.id) return res.status(403).json({error:"Du kan kun slette dine egne opslag"});
   const r=await q("DELETE FROM board_posts WHERE id=$1 RETURNING title",[req.params.id]);
   if(!r.rowCount) return res.status(404).json({error:"Opslag ikke fundet"});
   await logAction(req.session.user.id,"DELETE","Slet opslag",r.rows[0].title); res.json({ok:true});
 });
 
-app.get("/api/ranks", requireAdmin, async (_req,res) => {
+app.get("/api/ranks", requireAuth, async (_req,res) => {
   const r=await q(`SELECT r.id,r.name,r.level,r.created_at,COUNT(u.id)::int employee_count
                    FROM ranks r LEFT JOIN users u ON u.rank=r.name
                    GROUP BY r.id ORDER BY r.level DESC,r.name ASC`);
@@ -743,26 +829,18 @@ app.get("/api/ranks", requireAdmin, async (_req,res) => {
 });
 
 app.post("/api/ranks", requireAdmin, async (req,res) => {
-  const name=String(req.body.name||"").trim(),level=Number(req.body.level??0);
-  if(!name||name.length>120||!Number.isInteger(level)||level < -10000||level > 10000)
-    return res.status(400).json({error:"Indtast en rang og et gyldigt niveau"});
-  const duplicate=await q("SELECT 1 FROM ranks WHERE LOWER(name)=LOWER($1)",[name]);
-  if(duplicate.rowCount)return res.status(409).json({error:"Rangen findes allerede"});
-  const r=await q("INSERT INTO ranks(name,level) VALUES($1,$2) RETURNING id,name,level,created_at",[name,level]);
-  await logAction(req.session.user.id,"CREATE","Opret rang",name);
-  res.status(201).json({...r.rows[0],employee_count:0});
+  res.status(403).json({error:"Der skal altid være præcis 11 rangtrin. Rediger navnet på et eksisterende trin."});
 });
 
 app.patch("/api/ranks/:id", requireAdmin, async (req,res) => {
-  const id=Number(req.params.id),name=String(req.body.name||"").trim(),level=Number(req.body.level);
-  if(!Number.isInteger(id)||id<1||!name||name.length>120||!Number.isInteger(level)||level < -10000||level > 10000)
-    return res.status(400).json({error:"Indtast en rang og et gyldigt niveau"});
+  const id=Number(req.params.id),name=String(req.body.name||"").trim();
+  if(!Number.isInteger(id)||id<1||!name||name.length>120)return res.status(400).json({error:"Indtast et gyldigt rangnavn"});
   const duplicate=await q("SELECT 1 FROM ranks WHERE LOWER(name)=LOWER($1) AND id<>$2",[name,id]);
   if(duplicate.rowCount)return res.status(409).json({error:"Rangen findes allerede"});
-  const r=await q(`WITH old_rank AS MATERIALIZED (SELECT name FROM ranks WHERE id=$3),
-      updated_rank AS (UPDATE ranks SET name=$1,level=$2 WHERE id=$3 RETURNING id,name,level,created_at),
+  const r=await q(`WITH old_rank AS MATERIALIZED (SELECT name FROM ranks WHERE id=$2),
+      updated_rank AS (UPDATE ranks SET name=$1 WHERE id=$2 RETURNING id,name,level,created_at),
       updated_staff AS (UPDATE users SET rank=(SELECT name FROM updated_rank) WHERE rank=(SELECT name FROM old_rank))
-      SELECT * FROM updated_rank`,[name,level,id]);
+      SELECT * FROM updated_rank`,[name,id]);
   if(!r.rowCount)return res.status(404).json({error:"Rangen blev ikke fundet"});
   await logAction(req.session.user.id,"UPDATE","Opdater rang",name);
   const count=await q("SELECT COUNT(*)::int employee_count FROM users WHERE rank=$1",[name]);
@@ -770,40 +848,42 @@ app.patch("/api/ranks/:id", requireAdmin, async (req,res) => {
 });
 
 app.delete("/api/ranks/:id", requireAdmin, async (req,res) => {
-  const id=Number(req.params.id);
-  if(!Number.isInteger(id)||id<1)return res.status(400).json({error:"Ugyldigt rangnummer"});
-  const rank=await q("SELECT name FROM ranks WHERE id=$1",[id]);
-  if(!rank.rowCount)return res.status(404).json({error:"Rangen blev ikke fundet"});
-  const assigned=await q("SELECT COUNT(*)::int c FROM users WHERE rank=$1",[rank.rows[0].name]);
-  if(assigned.rows[0].c)return res.status(409).json({error:"Rangen er stadig tildelt medarbejdere. Tildel dem en anden rang først."});
-  await q("DELETE FROM ranks WHERE id=$1",[id]);
-  await logAction(req.session.user.id,"DELETE","Slet rang",rank.rows[0].name);
-  res.json({ok:true});
+  res.status(403).json({error:"Der skal altid være præcis 11 rangtrin. Et rangtrin kan ikke slettes."});
 });
 
 app.get("/api/employees", requireAuth, async (_req,res) => {
-  const r=await q("SELECT id,username,full_name,rank,badge_number,role,active,created_at FROM users ORDER BY active DESC,rank,full_name");
+  const r=await q("SELECT u.id,u.username,u.full_name,u.rank,COALESCE(r.level,0)::int rank_level,u.badge_number,u.role,u.active,u.created_at FROM users u LEFT JOIN ranks r ON r.name=u.rank ORDER BY u.active DESC,r.level DESC,u.full_name");
   res.json(r.rows);
 });
 
-app.post("/api/employees", requireAdmin, async (req,res) => {
-  const {username,password,full_name,rank="Betjent",badge_number,role="officer"}=req.body;
+app.post("/api/employees", requireRankAtLeast(8), async (req,res) => {
+  const {username,password,full_name,rank="Politi-Elev",badge_number,role="officer"}=req.body;
   if(!password || password.length<8) return res.status(400).json({error:"Adgangskoden skal være mindst 8 tegn"});
   const rankName=String(rank||"").trim();
-  if(!(await q("SELECT 1 FROM ranks WHERE name=$1",[rankName])).rowCount)return res.status(400).json({error:"Vælg en rang, der findes i rangadministrationen"});
+  const targetRank=await q("SELECT level FROM ranks WHERE name=$1",[rankName]);
+  if(!targetRank.rowCount)return res.status(400).json({error:"Vælg en rang, der findes i rangadministrationen"});
+  if(!req.access.full&&targetRank.rows[0].level>=req.access.rank_level)return res.status(403).json({error:"Du kan kun ansætte medarbejdere under dit eget rangniveau"});
+  if(role==="admin"&&!req.access.full)return res.status(403).json({error:"Kun Admin og Rang 10 kan tildele Admin-adgang"});
   const hash=await bcrypt.hash(password,12);
   const r=await q(`INSERT INTO users(username,password_hash,full_name,rank,badge_number,role) VALUES($1,$2,$3,$4,$5,$6)
     RETURNING id,username,full_name,rank,badge_number,role,active,created_at`,[username,hash,full_name,rankName,badge_number||null,role]);
   await logAction(req.session.user.id,"CREATE","Opret ansat",full_name); res.status(201).json(r.rows[0]);
 });
-app.patch("/api/employees/:id", requireAdmin, async (req,res) => {
-  const {full_name,rank,badge_number,role,active}=req.body;
-  if(String(req.params.id)===String(req.session.user.id) && (role!=="admin" || !active)) return res.status(400).json({error:"Du kan ikke fjerne dine egne administratorrettigheder"});
-  const rankName=String(rank||"").trim();
-  if(!(await q("SELECT 1 FROM ranks WHERE name=$1",[rankName])).rowCount)return res.status(400).json({error:"Vælg en rang, der findes i rangadministrationen"});
-  const r=await q(`UPDATE users SET full_name=$1,rank=$2,badge_number=$3,role=$4,active=$5 WHERE id=$6
+app.patch("/api/employees/:id", requireRankAtLeast(8), async (req,res) => {
+  const existing=await q("SELECT id,role,rank,active FROM users WHERE id=$1",[req.params.id]);
+  if(!existing.rowCount)return res.status(404).json({error:"Ansat ikke fundet"});
+  const {full_name,rank,badge_number,active}=req.body;
+  const role=req.access.full?(req.body.role||existing.rows[0].role):existing.rows[0].role;
+  if(String(req.params.id)===String(req.session.user.id) && (role!=="admin" || active===false || active==="false")) return res.status(400).json({error:"Du kan ikke fjerne dine egne administratorrettigheder"});
+  const targetExistingRank=await q("SELECT level FROM ranks WHERE name=$1",[existing.rows[0].rank]);
+  if(!req.access.full&&(existing.rows[0].role==="admin"||Number(targetExistingRank.rows[0]?.level)>=req.access.rank_level))return res.status(403).json({error:"Du kan kun administrere medarbejdere under dit eget rangniveau"});
+  const rankName=String(rank||existing.rows[0].rank).trim();
+  const targetRank=await q("SELECT level FROM ranks WHERE name=$1",[rankName]);
+  if(!targetRank.rowCount)return res.status(400).json({error:"Vælg en rang, der findes i rangadministrationen"});
+  if(!req.access.full&&targetRank.rows[0].level>=req.access.rank_level)return res.status(403).json({error:"Du kan kun tildele rang under dit eget niveau"});
+  const r=await q(`UPDATE users SET full_name=COALESCE($1,full_name),rank=$2,badge_number=$3,role=$4,active=$5 WHERE id=$6
     RETURNING id,username,full_name,rank,badge_number,role,active,created_at`,
-    [full_name,rankName,badge_number||null,role,!!active,req.params.id]);
+    [full_name||null,rankName,badge_number===undefined?null:(badge_number||null),role,active===undefined?existing.rows[0].active:active===true||active==="true",req.params.id]);
   if(!r.rowCount) return res.status(404).json({error:"Ansat ikke fundet"});
   await logAction(req.session.user.id,"UPDATE","Opdater ansat",full_name); res.json(r.rows[0]);
 });
