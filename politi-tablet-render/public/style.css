@@ -399,4 +399,6 @@ header nav button.active:after{background:linear-gradient(90deg,#2487ff,#55c6ff)
 .filter-tabs button,.chip{transition:background .15s ease,border-color .15s ease,color .15s ease}
 .modalbox{border-color:#526078;box-shadow:0 24px 75px #0009,0 0 0 1px #ffffff08}
 @media(prefers-reduced-motion:reduce){.btn,.icon-btn,.profile-dropdown button,.quick-actions button,.board-admin-actions button,.application-admin-actions button{transition:none}}
+.status.vacation{color:#ffd18b;background:#563b1e;border:1px solid #a96e28}
+.status.sick,.status.suspended{color:#ffadb3;background:#512630;border:1px solid #a93e50}
 
