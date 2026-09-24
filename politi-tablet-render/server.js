@@ -887,6 +887,18 @@ app.patch("/api/employees/:id", requireRankAtLeast(8), async (req,res) => {
   if(!r.rowCount) return res.status(404).json({error:"Ansat ikke fundet"});
   await logAction(req.session.user.id,"UPDATE","Opdater ansat",full_name); res.json(r.rows[0]);
 });
+app.delete("/api/employees/:id", requireRankAtLeast(8), async (req,res) => {
+  const existing=await q("SELECT id,username,full_name,role,rank FROM users WHERE id=$1",[req.params.id]);
+  if(!existing.rowCount)return res.status(404).json({error:"Ansat ikke fundet"});
+  const employee=existing.rows[0];
+  if(Number(employee.id)===Number(req.session.user.id))return res.status(400).json({error:"Du kan ikke fjerne din egen konto"});
+  const employeeRank=await q("SELECT level FROM ranks WHERE name=$1",[employee.rank]);
+  if(!req.access.full&&(employee.role==="admin"||Number(employeeRank.rows[0]?.level)>=req.access.rank_level))
+    return res.status(403).json({error:"Du kan kun fjerne medarbejdere under dit eget rangniveau"});
+  await q("DELETE FROM users WHERE id=$1",[employee.id]);
+  await logAction(req.session.user.id,"DELETE","Fjern ansat fra tabletten",`${employee.full_name} (${employee.username})`);
+  res.json({ok:true,full_name:employee.full_name});
+});
 
 app.get("/api/applications", requireAuth, requireFeature("applications_enabled"), async (_req,res) => {
   const r=await q("SELECT * FROM applications ORDER BY created_at DESC");
