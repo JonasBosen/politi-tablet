@@ -3,3 +3,40 @@
 @media(max-width:1200px){header{min-height:74px;height:auto;flex-wrap:wrap;gap:3px;padding:8px 17px}.header-divider{display:none}.brand{font-size:20px}.profile{margin-left:auto}.profile #userName{display:none}header nav{order:3;flex:0 0 100%;height:36px;margin:0 -3px}nav button{padding:0 9px;font-size:11px}.dashboard-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-grid>.span-2{grid-column:span 2}.board-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){header{height:auto;min-height:58px;flex-wrap:wrap;padding:10px 14px;gap:10px}.header-divider{display:none}header nav{order:3;flex:0 0 100%;height:38px;margin:0 -3px}nav button{font-size:10px;padding:0 9px}nav button.active:after{left:8px;right:8px}.profile{margin-left:auto}main{padding:26px 14px 40px}.page-head h1{font-size:23px}.page-head{align-items:flex-start}.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.stat-card{padding:12px;grid-template-columns:35px 1fr;column-gap:9px}.stat-icon{width:34px;height:34px}.dashboard-grid{gap:10px}.panel{padding:14px}.applications-layout,.settings-layout{grid-template-columns:1fr}.application-aside{order:-1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.application-aside>.panel-head{grid-column:1/-1;margin:0}.app-stat{border:0}.board-grid{grid-template-columns:1fr 1fr}.detail-top{flex-wrap:wrap}.detail-top .btn{flex:1}.detail-main{min-width:60%}.toolbar{align-items:stretch;flex-wrap:wrap}.searchbar{max-width:none}.toolbar>.btn{margin-left:auto}.filter-tabs{overflow:auto}.settings-footer{align-items:flex-start;flex-direction:column}.app-footer{padding:0 14px 14px}}
 @media(max-width:520px){.dashboard-grid{grid-template-columns:1fr}.dashboard-grid>.span-2{grid-column:auto}.stats-grid{grid-template-columns:1fr 1fr}.stat-card{grid-template-rows:19px 30px 18px}.stat-card strong{font-size:21px}.stat-label{font-size:9px}.board-grid{grid-template-columns:1fr}.page-head{flex-direction:column;gap:12px}.page-head>.btn{align-self:flex-start}.form-grid{grid-template-columns:1fr}.form-grid .wide{grid-column:auto}.application-card{flex-wrap:wrap}.application-info{width:calc(100% - 48px)}.application-actions{margin-left:46px}.detail-grid{grid-template-columns:1fr}.detail-top .avatar-xl{width:50px;height:50px}.detail-meta{gap:8px}.toolbar .primary-btn{width:100%}.settings-card{padding:13px}.setting-row{gap:10px}.setting-copy small{max-width:210px}.app-footer span:last-child{display:none}}
+
+/* Lidt større grundtypografi for bedre læsbarhed. */
+header nav button{font-size:13px}
+.profile{font-size:12px}
+.page-head p{font-size:14px}
+.eyebrow{font-size:10px}
+.stat-label{font-size:12px}
+.stat-foot{font-size:11px}
+.panel-head h2,.settings-group-title h2{font-size:16px}
+.panel-head p{font-size:12px}
+.table th{font-size:10px}
+.table td,.table td b{font-size:12px}
+.cell-sub{font-size:11px}
+.status{font-size:10px}
+.btn,.link-btn{font-size:12px}
+.search{font-size:13px}
+.filter-tabs button,.static-tab,.chip{font-size:11px}
+.form label{font-size:12px}
+.form input,.form textarea,.form select,.setting-row>input,.setting-row>select{font-size:13px}
+.setting-copy b{font-size:12px}
+.setting-copy small,.settings-footer small{font-size:11px}
+.connection{font-size:11px}
+.application-title h3{font-size:13px}
+.application-info>small{font-size:11px}
+.application-info p{font-size:12px}
+.activity b,.announcement b{font-size:12px}
+.activity small,.announcement small{font-size:10px}
+.quick-actions button{font-size:12px}
+.empty strong{font-size:13px}
+.empty small{font-size:11px}
+.login-subtitle{font-size:11px}
+.login-card label{font-size:12px}
+.login-card input{font-size:14px}
+.login-submit{font-size:13px}
+.login-foot,.error{font-size:11px}
+@media(max-width:760px){header nav button{font-size:12px}}
+@media(max-width:520px){.stat-label{font-size:10px}}
