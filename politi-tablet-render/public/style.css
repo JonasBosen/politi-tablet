@@ -327,6 +327,8 @@ main{max-width:1800px;min-height:calc(100vh - 130px);padding:25px clamp(22px,4.4
 .applications-mine-head h2{font-size:calc(var(--font-scale, 1) * 12px)}
 .application-admin-actions{grid-template-columns:1fr;margin-bottom:12px}
 .application-card.application-focus{outline:2px solid #706cf3;outline-offset:2px}
+.detail-grid .icon-btn.danger-text{color:#ff777d;background:#44353a;border-color:#684249}
+.detail-grid .icon-btn.danger-text:hover{background:#62383e;color:#fff}
 .detail-top .avatar-xl{width:64px;height:64px;position:relative;border-radius:3px;background:#f4f4f4;color:transparent;font-size:0}
 .detail-top .avatar-xl:before{content:"";position:absolute;width:23px;height:23px;left:20px;top:5px;border-radius:50%;background:#090a0c}
 .detail-top .avatar-xl:after{content:"";position:absolute;width:58px;height:29px;left:3px;bottom:2px;border-radius:50% 50% 3px 3px;background:#090a0c}
