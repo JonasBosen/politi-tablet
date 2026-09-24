@@ -181,6 +181,7 @@ header>.profile-menu{grid-column:3;grid-row:1;position:relative;justify-self:end
 .profile-menu summary::-webkit-details-marker{display:none}
 .profile-dropdown{position:absolute;z-index:20;top:calc(100% + 5px);right:0;min-width:185px;padding:10px;display:grid;gap:8px;background:#30333a;border:1px solid #494c54;border-radius:4px;box-shadow:var(--shadow);color:#ddd}
 .profile-dropdown #userName{font-size:calc(var(--font-scale, 1) * 11px)}
+.profile-menu-heading{padding-top:8px;border-top:1px solid #4b4e56;color:#aeb0b8;font-size:calc(var(--font-scale, 1) * 9px);font-weight:700;letter-spacing:.6px;text-transform:uppercase}
 .profile-dropdown button{padding:8px 10px;text-align:left;background:#3b3e46;border:1px solid #51545b;border-radius:3px;color:#eee;cursor:pointer}
 .profile-dropdown .profile-page-link.active{background:#454372;border-color:#6460dc;color:#fff}
 main{max-width:1800px;min-height:calc(100vh - 130px);padding:25px clamp(22px,4.4vw,80px) 38px}
