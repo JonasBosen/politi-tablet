@@ -898,6 +898,7 @@ app.patch("/api/employees/:id", requireRankAtLeast(8), async (req,res) => {
   const allowedStatuses=["Aktiv","Inaktiv","Syg","Ferie","Suspenderet"];
   const employmentStatus=req.body.employment_status===undefined?existing.rows[0].employment_status:String(req.body.employment_status);
   if(!allowedStatuses.includes(employmentStatus))return res.status(400).json({error:"Vælg en gyldig medarbejderstatus"});
+  const accountActive=!['Inaktiv','Suspenderet'].includes(employmentStatus);
   const role=req.access.full?(req.body.role||existing.rows[0].role):existing.rows[0].role;
   if(String(req.params.id)===String(req.session.user.id) && (role!=="admin"||["Inaktiv","Suspenderet"].includes(employmentStatus))) return res.status(400).json({error:"Du kan ikke fjerne eller suspendere din egen administratorkonto"});
   const targetExistingRank=await q("SELECT level FROM ranks WHERE name=$1",[existing.rows[0].rank]);
@@ -906,9 +907,9 @@ app.patch("/api/employees/:id", requireRankAtLeast(8), async (req,res) => {
   const targetRank=await q("SELECT level FROM ranks WHERE name=$1",[rankName]);
   if(!targetRank.rowCount)return res.status(400).json({error:"Vælg en rang, der findes i rangadministrationen"});
   if(!req.access.full&&targetRank.rows[0].level>=req.access.rank_level)return res.status(403).json({error:"Du kan kun tildele rang under dit eget niveau"});
-  const r=await q(`UPDATE users SET full_name=COALESCE($1,full_name),rank=$2,badge_number=$3,role=$4,employment_status=$5,active=($5 NOT IN ('Inaktiv','Suspenderet')) WHERE id=$6
+  const r=await q(`UPDATE users SET full_name=COALESCE($1,full_name),rank=$2,badge_number=$3,role=$4,employment_status=$5,active=$6 WHERE id=$7
     RETURNING id,username,full_name,rank,badge_number,role,active,employment_status,created_at`,
-    [full_name||null,rankName,badge_number===undefined?null:(badge_number||null),role,employmentStatus,req.params.id]);
+    [full_name||null,rankName,badge_number===undefined?null:(badge_number||null),role,employmentStatus,accountActive,req.params.id]);
   if(!r.rowCount) return res.status(404).json({error:"Ansat ikke fundet"});
   await logAction(req.session.user.id,"UPDATE","Opdater ansat",full_name); res.json(r.rows[0]);
 });
