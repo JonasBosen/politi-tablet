@@ -78,8 +78,15 @@ async function initDb() {
       birth_date DATE,
       gender VARCHAR(30),
       notes TEXT,
+      external_id VARCHAR(200),
+      source VARCHAR(40) NOT NULL DEFAULT 'manual',
+      last_seen_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE persons ADD COLUMN IF NOT EXISTS external_id VARCHAR(200);
+    ALTER TABLE persons ADD COLUMN IF NOT EXISTS source VARCHAR(40) NOT NULL DEFAULT 'manual';
+    ALTER TABLE persons ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+    CREATE UNIQUE INDEX IF NOT EXISTS persons_external_id_unique_idx ON persons(external_id) WHERE external_id IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS vehicles (
       id SERIAL PRIMARY KEY,
@@ -270,6 +277,21 @@ function callCoordinates(body={}) {
     const error=new Error("Opkaldet skal have gyldige X- og Y-koordinater.");error.status=400;throw error;
   }
   return {x,y,z};
+}
+
+function normalizeBirthDate(value) {
+  if(value===undefined||value===null||String(value).trim()==="") return null;
+  const raw=String(value).trim();
+  let match=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!match) {
+    const dmy=raw.match(/^(\d{2})[./-](\d{2})[./-](\d{4})$/);
+    if(dmy) match=[raw,dmy[3],dmy[2],dmy[1]];
+  }
+  if(!match) {const error=new Error("Fødselsdato skal være YYYY-MM-DD eller DD-MM-YYYY.");error.status=400;throw error;}
+  const iso=`${match[1]}-${match[2]}-${match[3]}`;
+  const d=new Date(`${iso}T00:00:00Z`);
+  if(Number.isNaN(d.getTime())||d.toISOString().slice(0,10)!==iso) {const error=new Error("Fødselsdatoen er ugyldig.");error.status=400;throw error;}
+  return iso;
 }
 
 async function insertDispatchCall(body={},userId=null) {
@@ -533,6 +555,30 @@ app.get("/api/integrations/calls/active", requireFiveMKey, async (_req,res) => {
   const r=await q(`SELECT id,external_id,caller_name,caller_phone,category,message,coord_x,coord_y,coord_z,status,created_at
                    FROM dispatch_calls WHERE status<>'closed' ORDER BY created_at ASC LIMIT 100`);
   res.json(r.rows);
+});
+
+app.post("/api/integrations/persons", requireFiveMKey, async (req,res) => {
+  const body=req.body||{};
+  const externalId=String(body.external_id||body.citizenid||body.identifier||"").trim().slice(0,200);
+  const name=String(body.name||body.character_name||`${body.firstname||""} ${body.lastname||""}`).trim().replace(/\s+/g," ").slice(0,160);
+  if(!externalId||!name) return res.status(400).json({error:"Karakterens stabile ID og fulde navn skal medsendes."});
+  const birthDate=normalizeBirthDate(body.birth_date??body.dateofbirth??body.birthdate);
+  const address=String(body.address||"").trim().slice(0,1000)||null;
+  const phone=String(body.phone||body.phone_number||body.phoneNumber||"").trim().slice(0,60)||null;
+  const gender=String(body.gender||body.sex||"").trim().slice(0,30)||null;
+  const source=String(body.source||"FiveM").trim().slice(0,40)||"FiveM";
+  const r=await q(`INSERT INTO persons(external_id,source,name,address,phone,birth_date,gender,last_seen_at)
+                   VALUES($1,$2,$3,$4,$5,$6,$7,NOW())
+                   ON CONFLICT(external_id) WHERE external_id IS NOT NULL DO UPDATE SET
+                     source=EXCLUDED.source,name=EXCLUDED.name,
+                     address=COALESCE(EXCLUDED.address,persons.address),
+                     phone=COALESCE(EXCLUDED.phone,persons.phone),
+                     birth_date=COALESCE(EXCLUDED.birth_date,persons.birth_date),
+                     gender=COALESCE(EXCLUDED.gender,persons.gender),last_seen_at=NOW()
+                   RETURNING id,external_id,source,name,address,phone,birth_date,gender,last_seen_at,(xmax=0) AS created`,
+    [externalId,source,name,address,phone,birthDate,gender]);
+  const {created,...person}=r.rows[0];
+  res.status(created?201:200).json({person,created});
 });
 
 app.get("/api/warrants", requireAuth, requireFeature("warrants_enabled"), async (_req,res) => {

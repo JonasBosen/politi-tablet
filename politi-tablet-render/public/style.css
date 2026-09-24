@@ -99,3 +99,29 @@ body{color:var(--user-text-color,var(--text))}
 .picker-cross{fill:#fff;stroke:#6769ea;stroke-width:4;pointer-events:none}
 @media(max-width:1000px){.calls-layout{grid-template-columns:1fr}.call-map-panel{order:-1}.call-map-wrap{max-height:380px}.fleet-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.call-toolbar-actions{width:100%;justify-content:flex-end}.call-card-heading{align-items:flex-start;flex-direction:column}.call-card-meta{align-items:flex-start;flex-direction:column}.call-actions .btn{flex:1}.fleet-stats{gap:8px}.fleet-stat{padding:11px;grid-template-columns:34px 1fr;column-gap:9px}.fleet-stat .stat-icon{width:32px;height:32px}.calls-panel,.call-map-panel{padding:12px}}
+
+/* Keep the full application navigation visible instead of hiding Settings off-screen. */
+header{height:auto;min-height:112px;display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:54px auto;align-items:center;gap:0 20px;padding-top:7px;padding-bottom:7px}
+header>.brand{grid-column:1;grid-row:1}
+header>.header-divider{display:none}
+header nav{grid-column:1/-1;grid-row:2;height:auto;min-height:76px;display:grid;grid-template-columns:repeat(7,max-content);grid-auto-rows:36px;align-content:center;justify-content:center;gap:2px 5px;overflow:visible;white-space:normal}
+header nav button{height:36px;flex:0 0 auto;padding:0 10px;font-size:calc(var(--font-scale, 1) * 12px)}
+header nav button.active:after{left:9px;right:9px}
+header>.profile{grid-column:2;grid-row:1;justify-self:end}
+@media(max-width:760px){header{grid-template-rows:48px auto;min-height:100px;padding-left:12px;padding-right:12px;gap:0 10px}header nav{grid-template-columns:repeat(6,max-content);justify-content:center;min-height:76px}header nav button{height:34px;padding:0 7px;font-size:calc(var(--font-scale, 1) * 11px)}header>.profile{gap:6px}header>.profile #userName{max-width:145px;overflow:hidden;text-overflow:ellipsis}}
+@media(max-width:520px){header{grid-template-columns:minmax(0,1fr) auto}header nav{grid-column:1/-1;grid-template-columns:repeat(4,max-content);justify-content:flex-start;max-height:132px;overflow-y:auto;min-height:120px}header nav button{height:32px}.brand{font-size:calc(var(--font-scale, 1) * 20px)}}
+
+.dispatch-map{width:100%;height:480px;background:#111927;border-radius:8px;z-index:1}
+.dispatch-map .leaflet-container{font:inherit;background:#111927}
+.dispatch-map .leaflet-control-zoom a{color:#eceef5;background:#252a34;border-color:#454c5b}
+.dispatch-map .leaflet-control-attribution{color:#969eae;background:#171b22dd}
+.dispatch-map .leaflet-control-attribution a{color:#aeb5ff}
+.call-map-wrap{height:480px}
+.call-map-icon{background:none;border:0}
+.call-map-marker{width:28px;height:32px;display:grid;place-items:center;border:2px solid #fff;border-radius:50% 50% 50% 3px;transform:rotate(-45deg);background:#d99932;color:#141923;font-size:12px;font-weight:800;box-shadow:0 3px 8px #0009}
+.call-map-marker b{transform:rotate(45deg)}
+.call-map-marker.accepted{background:#47b584;color:#0c2118}
+.call-map-marker.selected{outline:3px solid #fff;outline-offset:2px;z-index:5}
+.picker-map{height:270px;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+@media(max-width:1000px){.dispatch-map,.call-map-wrap{height:420px}}
+@media(max-width:520px){.dispatch-map,.call-map-wrap{height:320px}.picker-map{height:230px}}
