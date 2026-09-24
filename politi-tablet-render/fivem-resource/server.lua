@@ -2,6 +2,13 @@ local QBCore, ESX, Framework
 
 local function initFramework()
     local wanted = string.lower(Config.Framework or 'auto')
+    -- Qbox har ikke længere et QBCore core-object; brug qbx_core-exportet direkte.
+    if wanted == 'auto' or wanted == 'qbox' then
+        if GetResourceState('qbx_core') == 'started' then
+            Framework = 'qbox'
+            return true
+        end
+    end
     if wanted == 'auto' or wanted == 'qbcore' then
         if GetResourceState('qb-core') == 'started' then
             local ok, core = pcall(function() return exports['qb-core']:GetCoreObject() end)
@@ -37,8 +44,14 @@ local function addressText(value)
 end
 
 local function getCharacter(src)
-    if Framework == 'qbcore' then
-        local player = QBCore.Functions.GetPlayer(src)
+    if Framework == 'qbox' or Framework == 'qbcore' then
+        local player
+        if Framework == 'qbox' then
+            local ok, result = pcall(function() return exports.qbx_core:GetPlayer(src) end)
+            if ok then player = result end
+        else
+            player = QBCore.Functions.GetPlayer(src)
+        end
         if not player or not player.PlayerData then return nil end
         local data, char = player.PlayerData, player.PlayerData.charinfo or {}
         local name = table.concat({char.firstname or '', char.lastname or ''}, ' '):gsub('^%s*(.-)%s*$', '%1')
@@ -47,7 +60,7 @@ local function getCharacter(src)
         if gender == 0 or gender == '0' then gender = 'Mand' elseif gender == 1 or gender == '1' then gender = 'Kvinde' end
         return {
             external_id = 'qbcore:' .. tostring(data.citizenid or GetPlayerIdentifierByType(src, 'license') or src),
-            source = 'QBCore', name = name, birth_date = char.birthdate,
+            source = Framework == 'qbox' and 'Qbox' or 'QBCore', name = name, birth_date = char.birthdate,
             phone = char.phone, address = addressText(char.address or (data.metadata and (data.metadata.address or data.metadata.apartment))), gender = gender
         }
     elseif Framework == 'esx' then
@@ -132,9 +145,10 @@ CreateThread(function()
         Wait(1000)
     end
     if not Framework then
-        print('[politi-tablet] QBCore/ESX blev ikke fundet. Sæt Config.Framework og start resource efter frameworket.')
+        print('[politi-tablet] Qbox/QBCore/ESX blev ikke fundet. Sæt Config.Framework og start resource efter frameworket.')
         return
     end
     print(('[politi-tablet] Person-sync bruger %s.'):format(Framework))
     for _, player in ipairs(GetPlayers()) do scheduleSync(player) end
 end)
+

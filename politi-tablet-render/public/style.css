@@ -125,3 +125,31 @@ header>.profile{grid-column:2;grid-row:1;justify-self:end}
 .picker-map{height:270px;border:1px solid var(--line);border-radius:7px;overflow:hidden}
 @media(max-width:1000px){.dispatch-map,.call-map-wrap{height:420px}}
 @media(max-width:520px){.dispatch-map,.call-map-wrap{height:320px}.picker-map{height:230px}}
+
+/* Dream Network / POLITI blue theme. User-selected colors still take precedence. */
+:root{--bg:#070d18;--surface:#0d1726;--surface-2:#111e30;--surface-3:#16253a;--line:#203a58;--text:#e9f4ff;--muted:#91a7c2;--accent:#087bff;--accent-bright:#20baff;--shadow:0 16px 48px #0009}
+html,body{background:radial-gradient(ellipse at 50% -20%,#102746 0%,var(--bg) 58%);background-attachment:fixed}
+header{background:color-mix(in srgb,var(--user-tablet-color,#07111f) 94%,#001a3b 6%);border-bottom:1px solid #1b4e78;box-shadow:0 5px 24px #0007}
+nav button span,.type-icon,.settings-group-title span,.announcement-mark{color:var(--accent-bright)}
+nav button.active:after{background:linear-gradient(90deg,#087bff,#28d2ff);box-shadow:0 0 14px #08aaffaa}
+.stat-card,.panel,.settings-card,.post-card{background:linear-gradient(145deg,#101d2e,#0c1522);border-color:#1c3856;box-shadow:0 8px 24px #0003}
+.stat-card:hover,.quick-actions button:hover{border-color:#168ee3;box-shadow:0 0 18px #078bff26}
+.stat-icon,.login-emblem{background:linear-gradient(145deg,#087bff,#1740a8);box-shadow:0 0 18px #087bff55}
+.table-wrap{border-color:#1c3856}.table{background:#0b1523}.table th{background:#12243a;color:#a9c5e2}.table td{border-color:#1b2d42}.table tbody tr:hover{background:#11233a}
+.search,.form input,.form textarea,.form select,.setting-row>input,.setting-row>select,.login-card input{background:#081321;border-color:#24415f}
+.btn{background:#14253a;border-color:#254665}.primary-btn,.login-submit{background:linear-gradient(100deg,#096bf0,#087ebd);border-color:#159eea;box-shadow:0 0 15px #087bff35}
+.primary-btn:hover,.login-submit:hover{filter:brightness(1.18);box-shadow:0 0 20px #08aaff55}
+.filter-tabs button.selected,.static-tab,.chip.active{background:#102e50;border-color:#147aca;color:#e8f7ff}
+.tag-purple{background:#102e50;color:#a9e7ff}.mono{color:#86d9ff}
+.empty>span{background:#102746;color:#4bbcff}.avatar{background:#13335c;color:#b5e6ff}
+.call-card{background:#0b1624}.call-card:hover,.call-card.selected{border-color:#168ee3;background:#10233a}
+.call-coordinates{background:#102e50;color:#a9e7ff}.call-map-wrap,.dispatch-map,.coordinate-picker{background:#071a2c;border-color:#1d527c}
+.dispatch-map .leaflet-control-zoom a{background:#10243a;border-color:#315170}.dispatch-map .leaflet-control-attribution{background:#071321dd}
+.settings-group-title{background:#12243a}.switch input:checked+span{background:#087ee5}
+.post-card.pinned{border-color:#0c7fca;background:linear-gradient(145deg,#102640,#0b1522)}
+.login-screen{background:radial-gradient(ellipse at 50% 8%,#102c50,#070d18 60%)}
+.login-card{background:#0d1726;border-color:#23405e}
+.toast{background:#0c2a26;border-color:#147253}.toast.error{background:#351b25;border-color:#8d3545}
+.app-footer i{color:var(--accent-bright)}
+@media(prefers-reduced-motion:no-preference){.btn,.stat-card,.call-card{transition:all .18s ease}}
+

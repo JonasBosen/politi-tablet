@@ -9,7 +9,7 @@ Et mørkt dansk politiinterface til FiveM-rollespil. Løsningen bruger Express, 
 - Køretøjsregister med ejeropslag og redigering.
 - Flådestyring med patruljekøretøjer, kaldesignaler, status og medarbejdertilknytning.
 - Opkaldsliste med overtagelse, afslutning, telefonlink og interaktivt GTA V-kort med koordinatmarkører.
-- FiveM-resource der synkroniserer RP-karakterer automatisk ved login fra QBCore eller ESX.
+- FiveM-resource der synkroniserer RP-karakterer automatisk ved login fra Qbox (QBX), QBCore eller ESX.
 - Beskyttede FiveM API-ruter til at modtage opkald og synkronisere aktive opkald og patruljepositioner.
 - Efterlysninger, opslagstavle, bødetakster og ansøgningsbehandling.
 - Medarbejderadministration, revisionslogs og systemindstillinger for administratorer.
@@ -44,14 +44,14 @@ Tablet-brugere kan også oprette opkald direkte i Opkaldslisten. FiveM-nøglen e
 
 ### Installer FiveM-synkronisering af RP-karakterer
 
-Kopiér mappen `fivem-resource` til serverens `resources/[local]/politi-tablet-sync`. Omdøb den eventuelt til `politi-tablet-sync`, så startlinjen nedenfor passer. Tilføj resource efter jeres framework i FiveM-serverens `server.cfg`:
+Kopiér mappen `fivem-resource` til serverens `resources/[local]/politi-tablet-sync`. Omdøb den eventuelt til `politi-tablet-sync`, så startlinjen nedenfor passer. Standardindstillingen er Qbox. Start resource efter `qbx_core` i FiveM-serverens `server.cfg`:
 
 ```cfg
 set politi_tablet_api_key "SAMME_HEMMELIGE_NØGLE_SOM_PÅ_RENDER"
 ensure politi-tablet-sync
 ```
 
-Opret en hemmelig `FIVEM_API_KEY` på Render-servicen med samme værdi. Nøglen ligger kun i server.cfg og serverresource-koden; læg aldrig server.cfg med nøglen i GitHub. Resource finder QBCore eller ESX automatisk, kan også vælges i `fivem-resource/config.lua` og synkroniserer karakterens navn, fødselsdato, telefon og køn, når frameworket leverer oplysningerne. Den forsøger også adressefelter (`charinfo.address`, metadata-adresse eller ESX `address`/`street`), men standardopsætninger af QBCore/ESX gemmer ikke nødvendigvis en adresse. Hvis jeres server bruger et separat boligscript, skal dets adressefelt mappes ind i `fivem-resource/server.lua`.
+Opret en hemmelig `FIVEM_API_KEY` på Render-servicen med samme værdi. Nøglen ligger kun i server.cfg og serverresource-koden; læg aldrig server.cfg med nøglen i GitHub. Resource henter Qbox-karakterer via `exports.qbx_core:GetPlayer(source)` (Qbox har ikke det gamle QBCore core-object). Qbox er valgt som standard i `fivem-resource/config.lua`; `qbcore` og `esx` kan stadig vælges dér. Ved spillerens tilslutning prøver resource'en igen, indtil karakteren er indlæst, og synkroniserer navn, fødselsdato, telefon og køn, når frameworket leverer oplysningerne. Den forsøger også adressefelter (`charinfo.address`, metadata-adresse eller ESX `address`/`street`), men standardopsætninger gemmer ikke nødvendigvis en RP-adresse. Hvis serveren bruger et separat boligscript, skal dets adressefelt mappes ind i `fivem-resource/server.lua`.
 
 Karakterens framework-ID bruges som stabil nøgle, så genindtræden opdaterer den eksisterende RP-profil i stedet for at oprette dubletter. Kun dette POLITI Tablet-projekt og dets egen database berøres.
 
@@ -60,3 +60,4 @@ Opkaldskortets baggrund er GTA V-kortfliser fra Rockstar's korttjeneste. Kortfli
 ## Afgrænsning
 
 POLITI Tablet bruger sin egen Render-service og `Dream_Network_politi`-databasen. Den eksisterende `staff-panel`-service må ikke ændres eller forbindes til dette projekt.
+
