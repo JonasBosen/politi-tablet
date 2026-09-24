@@ -61,9 +61,11 @@ async function initDb() {
       role VARCHAR(30) NOT NULL DEFAULT 'officer',
       active BOOLEAN NOT NULL DEFAULT TRUE,
       employment_status VARCHAR(30) NOT NULL DEFAULT 'Aktiv',
+      return_date DATE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     ALTER TABLE users ADD COLUMN IF NOT EXISTS employment_status VARCHAR(30) NOT NULL DEFAULT 'Aktiv';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS return_date DATE;
     UPDATE users SET employment_status='Inaktiv' WHERE active=false AND employment_status='Aktiv';
 
     CREATE TABLE IF NOT EXISTS ranks (
@@ -367,6 +369,15 @@ function normalizeBirthDate(value) {
   const d=new Date(`${iso}T00:00:00Z`);
   if(Number.isNaN(d.getTime())||d.toISOString().slice(0,10)!==iso) {const error=new Error("Fødselsdatoen er ugyldig.");error.status=400;throw error;}
   return iso;
+}
+
+function normalizeReturnDate(value) {
+  if(value===undefined||value===null||String(value).trim()==="")return null;
+  const raw=String(value).trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {const error=new Error("Vælg en gyldig returdato.");error.status=400;throw error;}
+  const parsed=new Date(`${raw}T00:00:00Z`);
+  if(Number.isNaN(parsed.getTime())||parsed.toISOString().slice(0,10)!==raw) {const error=new Error("Returdatoen er ugyldig.");error.status=400;throw error;}
+  return raw;
 }
 
 async function insertDispatchCall(body={},userId=null) {
@@ -874,7 +885,7 @@ app.delete("/api/ranks/:id", requireAdmin, async (req,res) => {
 });
 
 app.get("/api/employees", requireAuth, async (_req,res) => {
-  const r=await q("SELECT u.id,u.username,u.full_name,u.rank,COALESCE(r.level,0)::int rank_level,u.badge_number,u.role,u.active,u.employment_status,u.created_at FROM users u LEFT JOIN ranks r ON r.name=u.rank ORDER BY u.active DESC,r.level DESC,u.full_name");
+  const r=await q("SELECT u.id,u.username,u.full_name,u.rank,COALESCE(r.level,0)::int rank_level,u.badge_number,u.role,u.active,u.employment_status,u.return_date,u.created_at FROM users u LEFT JOIN ranks r ON r.name=u.rank ORDER BY u.active DESC,r.level DESC,u.full_name");
   res.json(r.rows);
 });
 
@@ -892,9 +903,10 @@ app.post("/api/employees", requireRankAtLeast(8), async (req,res) => {
   await logAction(req.session.user.id,"CREATE","Opret ansat",full_name); res.status(201).json(r.rows[0]);
 });
 app.patch("/api/employees/:id", requireRankAtLeast(8), async (req,res) => {
-  const existing=await q("SELECT id,role,rank,active,employment_status FROM users WHERE id=$1",[req.params.id]);
+  const existing=await q("SELECT id,role,rank,active,employment_status,return_date,full_name FROM users WHERE id=$1",[req.params.id]);
   if(!existing.rowCount)return res.status(404).json({error:"Ansat ikke fundet"});
   const {full_name,rank,badge_number}=req.body;
+  const returnDate=req.body.return_date===undefined?existing.rows[0].return_date:normalizeReturnDate(req.body.return_date);
   const allowedStatuses=["Aktiv","Inaktiv","Syg","Ferie","Suspenderet"];
   const employmentStatus=req.body.employment_status===undefined?existing.rows[0].employment_status:String(req.body.employment_status);
   if(!allowedStatuses.includes(employmentStatus))return res.status(400).json({error:"Vælg en gyldig medarbejderstatus"});
@@ -907,9 +919,9 @@ app.patch("/api/employees/:id", requireRankAtLeast(8), async (req,res) => {
   const targetRank=await q("SELECT level FROM ranks WHERE name=$1",[rankName]);
   if(!targetRank.rowCount)return res.status(400).json({error:"Vælg en rang, der findes i rangadministrationen"});
   if(!req.access.full&&targetRank.rows[0].level>=req.access.rank_level)return res.status(403).json({error:"Du kan kun tildele rang under dit eget niveau"});
-  const r=await q(`UPDATE users SET full_name=COALESCE($1,full_name),rank=$2,badge_number=$3,role=$4,employment_status=$5,active=$6 WHERE id=$7
-    RETURNING id,username,full_name,rank,badge_number,role,active,employment_status,created_at`,
-    [full_name||null,rankName,badge_number===undefined?null:(badge_number||null),role,employmentStatus,accountActive,req.params.id]);
+  const r=await q(`UPDATE users SET full_name=COALESCE($1,full_name),rank=$2,badge_number=$3,role=$4,employment_status=$5,active=$6,return_date=$7 WHERE id=$8
+    RETURNING id,username,full_name,rank,badge_number,role,active,employment_status,return_date,created_at`,
+    [full_name||null,rankName,badge_number===undefined?null:(badge_number||null),role,employmentStatus,accountActive,returnDate,req.params.id]);
   if(!r.rowCount) return res.status(404).json({error:"Ansat ikke fundet"});
   await logAction(req.session.user.id,"UPDATE","Opdater ansat",full_name); res.json(r.rows[0]);
 });
