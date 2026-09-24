@@ -61,6 +61,14 @@ async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS user_preferences (
+      user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      font_scale INTEGER NOT NULL DEFAULT 100 CHECK (font_scale BETWEEN 80 AND 150),
+      text_color VARCHAR(7) NOT NULL DEFAULT '#eef0f5',
+      tablet_color VARCHAR(7) NOT NULL DEFAULT '#181b22',
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS persons (
       id SERIAL PRIMARY KEY,
       name VARCHAR(160) NOT NULL,
@@ -233,6 +241,24 @@ app.post("/api/logout", requireAuth, async (req,res) => {
 });
 
 app.get("/api/me", requireAuth, (req,res) => res.json({ user: req.session.user }));
+
+app.get("/api/preferences", requireAuth, async (req,res) => {
+  const r=await q("SELECT font_scale,text_color,tablet_color FROM user_preferences WHERE user_id=$1",[req.session.user.id]);
+  res.json(r.rows[0]||{font_scale:100,text_color:"#eef0f5",tablet_color:"#181b22"});
+});
+
+app.post("/api/preferences", requireAuth, async (req,res) => {
+  const fontScale=Number(req.body.font_scale);
+  const textColor=String(req.body.text_color||"");
+  const tabletColor=String(req.body.tablet_color||"");
+  if(!Number.isInteger(fontScale)||fontScale<80||fontScale>150) return res.status(400).json({error:"Tekststørrelsen skal være mellem 80 og 150 %."});
+  if(!/^#[0-9a-f]{6}$/i.test(textColor)||!/^#[0-9a-f]{6}$/i.test(tabletColor)) return res.status(400).json({error:"Vælg gyldige farver."});
+  const r=await q(`INSERT INTO user_preferences(user_id,font_scale,text_color,tablet_color,updated_at)
+                   VALUES($1,$2,$3,$4,NOW())
+                   ON CONFLICT(user_id) DO UPDATE SET font_scale=EXCLUDED.font_scale,text_color=EXCLUDED.text_color,tablet_color=EXCLUDED.tablet_color,updated_at=NOW()
+                   RETURNING font_scale,text_color,tablet_color`,[req.session.user.id,fontScale,textColor.toLowerCase(),tabletColor.toLowerCase()]);
+  res.json(r.rows[0]);
+});
 
 app.get("/api/public-settings", async (_req,res) => {
   const r=await q("SELECT key,value FROM settings WHERE key = ANY($1)",[["site_name","applications_enabled","warrants_enabled","board_enabled","custom_fines_enabled"]]);
