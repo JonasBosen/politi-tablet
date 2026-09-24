@@ -231,6 +231,16 @@ async function deleteCase(id,caseNumber){if(!confirm(`Vil du slette sag ${caseNu
 const pages={dashboard,persons,vehicles,fleet,calls,warrants,board,fines,employees,ranks,applications,logs,settings,cases};
 async function route(p){try{const feature={applications:"applications_enabled",warrants:"warrants_enabled",board:"board_enabled"}[p];if(feature&&String(publicSettings[feature]??"true")==="false"){toast("Denne funktion er slået fra i systemindstillingerne","error");p="dashboard"}await (pages[p]||dashboard)()}catch(e){content.innerHTML=`<div class="error-panel"><strong>Kunne ikke indlæse siden</strong><p>${esc(e.message)}</p><button class="btn" onclick="route('${esc(p)}')">Prøv igen</button></div>`}}
 function updateUser(){if(!me)return;$("#userName").textContent=`${me.full_name} · ${me.rank}`;$("#profileInitials").textContent=initials(me.full_name);document.querySelectorAll(".adminOnly").forEach(x=>x.classList.toggle("hidden",!fullAccess()));}
+function updateProfileImage(image=""){
+  const preview=$("#profileImagePreview"),fallback=$("#profileImageFallback"),remove=$("#removeProfileImage");
+  if(!preview||!fallback)return;
+  const hasImage=Boolean(image);
+  preview.src=hasImage?image:"";
+  preview.classList.toggle("hidden",!hasImage);
+  fallback.textContent=initials(me?.full_name);
+  fallback.classList.toggle("hidden",hasImage);
+  remove?.classList.toggle("hidden",!hasImage);
+}
 function applyPublicSettings(s={}){publicSettings=s;const name=s.site_name==="Dream Politi"||!s.site_name?"POLITI":s.site_name;document.title=`${name} Tablet`;document.querySelectorAll(".brand").forEach(el=>{el.textContent=name});document.querySelectorAll("[data-feature]").forEach(el=>el.classList.toggle("hidden",String(s[el.dataset.feature]??"true")==="false"));}
 function applyAppearance(p={}){
   const value={...defaultAppearance,...p};
@@ -243,6 +253,7 @@ function applyAppearance(p={}){
   root.style.setProperty("--surface","color-mix(in srgb, var(--user-tablet-color) 91%, white)");
   root.style.setProperty("--surface-2","color-mix(in srgb, var(--user-tablet-color) 84%, white)");
   root.style.setProperty("--surface-3","color-mix(in srgb, var(--user-tablet-color) 77%, white)");
+  updateProfileImage(value.profile_image||"");
 }
 async function showApp(){try{applyAppearance(await api("/api/preferences"))}catch{}updateUser();$("#login").classList.add("hidden");$("#app").classList.remove("hidden");route(location.hash.slice(1)||"dashboard")}
 document.querySelectorAll("[data-page]").forEach(b=>b.onclick=()=>{const menu=b.closest(".profile-menu");if(menu)menu.open=false;history.replaceState(null,"",location.pathname+location.hash);location.hash=b.dataset.page});
@@ -251,6 +262,16 @@ window.addEventListener("popstate",()=>route(location.hash.slice(1)||"dashboard"
 window.addEventListener("unhandledrejection",e=>{e.preventDefault();toast(e.reason?.message||"Handlingen kunne ikke gennemføres","error")});
 $("#loginForm").onsubmit=async e=>{e.preventDefault();$("#loginError").textContent="";try{const r=await api("/api/login",{method:"POST",body:JSON.stringify({username:$("#username").value,password:$("#password").value})});me=r.user;showApp()}catch(x){$("#loginError").textContent=x.message}};
 $("#logout").onclick=async()=>{try{await api("/api/logout",{method:"POST"})}finally{location.reload()}};
+$("#profileImageInput").addEventListener("change",async e=>{
+  const input=e.currentTarget,file=input.files?.[0];if(!file)return;
+  if(!["image/png","image/jpeg","image/webp"].includes(file.type)){toast("Vælg et PNG-, JPG- eller WEBP-billede","error");input.value="";return}
+  if(file.size>512*1024){toast("Billedet må højst være 512 KB","error");input.value="";return}
+  const reader=new FileReader();
+  reader.onerror=()=>{toast("Billedet kunne ikke læses","error");input.value=""};
+  reader.onload=async()=>{try{const saved=await api("/api/profile-image",{method:"POST",body:JSON.stringify({image:reader.result})});updateProfileImage(saved.profile_image);toast("Profilbilledet er gemt")}catch(error){toast(error.message,"error")}finally{input.value=""}};
+  reader.readAsDataURL(file);
+});
+$("#removeProfileImage").onclick=async()=>{try{await api("/api/profile-image",{method:"DELETE"});updateProfileImage("");toast("Profilbilledet er fjernet")}catch(error){toast(error.message,"error")}};
 api("/api/public-settings").then(applyPublicSettings).catch(()=>{});
 api("/api/me").then(r=>{me=r.user;showApp()}).catch(()=>{});
 
