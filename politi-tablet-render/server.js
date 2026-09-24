@@ -75,8 +75,10 @@ async function initDb() {
       font_scale INTEGER NOT NULL DEFAULT 100 CHECK (font_scale BETWEEN 80 AND 150),
       text_color VARCHAR(7) NOT NULL DEFAULT '#eef0f5',
       tablet_color VARCHAR(7) NOT NULL DEFAULT '#181b22',
+      profile_image TEXT,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS profile_image TEXT;
 
     CREATE TABLE IF NOT EXISTS persons (
       id SERIAL PRIMARY KEY,
@@ -411,8 +413,25 @@ app.get("/api/me", requireAuth, async (req,res) => {
 });
 
 app.get("/api/preferences", requireAuth, async (req,res) => {
-  const r=await q("SELECT font_scale,text_color,tablet_color FROM user_preferences WHERE user_id=$1",[req.session.user.id]);
-  res.json(r.rows[0]||{font_scale:100,text_color:"#eef0f5",tablet_color:"#181b22"});
+  const r=await q("SELECT font_scale,text_color,tablet_color,profile_image FROM user_preferences WHERE user_id=$1",[req.session.user.id]);
+  res.json(r.rows[0]||{font_scale:100,text_color:"#eef0f5",tablet_color:"#181b22",profile_image:null});
+});
+
+app.post("/api/profile-image", requireAuth, async (req,res) => {
+  const image=String(req.body.image||"");
+  const match=image.match(/^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/);
+  if(!match)return res.status(400).json({error:"Vælg et PNG-, JPG- eller WEBP-billede."});
+  const bytes=Buffer.from(match[2],"base64");
+  if(bytes.length>512*1024)return res.status(413).json({error:"Profilbilledet må højst være 512 KB."});
+  if(!bytes.length||bytes.toString("base64")!==match[2])return res.status(400).json({error:"Billedfilen kunne ikke læses."});
+  await q(`INSERT INTO user_preferences(user_id,profile_image,updated_at) VALUES($1,$2,NOW())
+           ON CONFLICT(user_id) DO UPDATE SET profile_image=EXCLUDED.profile_image,updated_at=NOW()`,[req.session.user.id,image]);
+  res.json({ok:true,profile_image:image});
+});
+app.delete("/api/profile-image", requireAuth, async (req,res) => {
+  await q(`INSERT INTO user_preferences(user_id,profile_image,updated_at) VALUES($1,NULL,NOW())
+           ON CONFLICT(user_id) DO UPDATE SET profile_image=NULL,updated_at=NOW()`,[req.session.user.id]);
+  res.json({ok:true});
 });
 
 app.post("/api/preferences", requireAuth, async (req,res) => {
