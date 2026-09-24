@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>POLITI Tablet</title>
-<meta name="theme-color" content="#070d18">
+<meta name="theme-color" content="#1d1f25">
 <meta name="description" content="POLITI Tablet — politiets registre, flådestyring og opkaldsliste">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
@@ -27,24 +27,29 @@
 
 <div id="app" class="hidden">
 <header>
-  <a class="brand" href="#dashboard" aria-label="POLITI hjem">POLITI<span class="brand-dot">.</span></a>
+  <a class="brand" href="#dashboard" aria-label="POLITI hjem">POLITI</a>
   <span class="header-divider"></span>
   <nav id="nav">
-    <button data-page="dashboard"><span>⌂</span> Dashboard</button>
-    <button data-page="cases"><span>◫</span> Sager</button>
-    <button data-page="persons"><span>♙</span> Personer</button>
-    <button data-page="vehicles"><span>▣</span> Køretøjer</button>
-    <button data-page="fleet"><span>🚔</span> Flådestyring</button>
-    <button data-page="calls"><span>☎</span> Opkaldsliste</button>
-    <button data-page="warrants" data-feature="warrants_enabled"><span>⌕</span> Efterlysninger</button>
-    <button data-page="board" data-feature="board_enabled"><span>◈</span> Opslagstavle</button>
-    <button data-page="fines"><span>▤</span> Bødetakster</button>
-    <button data-page="employees"><span>♟</span> Ansatte</button>
-    <button data-page="applications" data-feature="applications_enabled"><span>▱</span> Ansøgninger</button>
-    <button data-page="logs" class="adminOnly"><span>☷</span> Logs</button>
-    <button data-page="settings"><span>⚙</span> Indstillinger</button>
+    <div class="nav-primary">
+      <button data-page="dashboard"><span>⌂</span> Home</button>
+      <button data-page="persons"><span>♙</span> Person Register</button>
+      <button data-page="vehicles"><span>▣</span> Køretøjs Database</button>
+      <button data-page="warrants" data-feature="warrants_enabled"><span>⌕</span> Efterlysninger</button>
+      <button data-page="board" data-feature="board_enabled"><span>◈</span> Opslagstavle</button>
+      <button data-page="fines"><span>▤</span> Bødetakster</button>
+      <button data-page="employees"><span>♟</span> Ansatte</button>
+    </div>
+    <div class="nav-secondary">
+      <button data-page="cases"><span>◫</span> Sager</button>
+      <button data-page="fleet"><span>🚔</span> Flådestyring</button>
+      <button data-page="calls"><span>☎</span> Opkaldsliste</button>
+      <button data-page="applications" data-feature="applications_enabled"><span>▱</span> Ansøgninger</button>
+      <button data-page="logs" class="adminOnly"><span>☷</span> Logs</button>
+      <button data-page="settings"><span>⚙</span> Indstillinger</button>
+    </div>
   </nav>
-  <div class="profile"><span class="avatar avatar-sm" id="profileInitials"></span><span id="userName"></span><button id="logout" title="Log ud" aria-label="Log ud">↪</button></div>
+  <span class="avatar avatar-sm hidden" id="profileInitials" aria-hidden="true"></span>
+  <details class="profile-menu"><summary>Min Profil <span>⌄</span></summary><div class="profile-dropdown"><span id="userName"></span><button id="logout" type="button">Log ud</button></div></details>
 </header>
 <main id="content"></main>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
