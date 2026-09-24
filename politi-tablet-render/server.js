@@ -144,8 +144,10 @@ async function initDb() {
       fine_dkk INTEGER NOT NULL DEFAULT 0,
       prison_days INTEGER NOT NULL DEFAULT 0,
       license_points INTEGER NOT NULL DEFAULT 0,
+      penalties JSONB NOT NULL DEFAULT '[]'::jsonb,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE cases ADD COLUMN IF NOT EXISTS penalties JSONB NOT NULL DEFAULT '[]'::jsonb;
 
     CREATE TABLE IF NOT EXISTS warrants (
       id SERIAL PRIMARY KEY,
@@ -166,8 +168,10 @@ async function initDb() {
       title VARCHAR(180) NOT NULL,
       price_dkk INTEGER NOT NULL DEFAULT 0,
       points INTEGER NOT NULL DEFAULT 0,
+      prison_days INTEGER NOT NULL DEFAULT 0,
       description TEXT
     );
+    ALTER TABLE fines ADD COLUMN IF NOT EXISTS prison_days INTEGER NOT NULL DEFAULT 0;
 
     CREATE TABLE IF NOT EXISTS board_posts (
       id SERIAL PRIMARY KEY,
@@ -222,10 +226,10 @@ async function initDb() {
 
   const f = await q("SELECT COUNT(*)::int AS c FROM fines");
   if (f.rows[0].c === 0) {
-    await q(`INSERT INTO fines(category,code,title,price_dkk,points,description) VALUES
-      ('Færdselsloven','FL-001','Hastighedsovertrædelse',1500,1,'Kørsel over hastighedsgrænsen'),
-      ('Færdselsloven','FL-002','Kørsel uden sele',1000,0,'Manglende sikkerhedssele'),
-      ('Straffeloven','SL-001','Ulovlig besiddelse',5000,0,'Testtakst til RP-server')`);
+    await q(`INSERT INTO fines(category,code,title,price_dkk,points,prison_days,description) VALUES
+      ('Færdselsloven','FL-001','Hastighedsovertrædelse',1500,1,0,'Kørsel over hastighedsgrænsen'),
+      ('Færdselsloven','FL-002','Kørsel uden sele',1000,0,0,'Manglende sikkerhedssele'),
+      ('Straffeloven','SL-001','Ulovlig besiddelse',5000,0,0,'Testtakst til RP-server')`);
   }
 
   const s = await q("SELECT COUNT(*)::int AS c FROM settings");
@@ -424,10 +428,33 @@ app.get("/api/persons/:id", requireAuth, async (req,res) => {
 
 app.post("/api/persons/:id/cases", requireAuth, async (req,res) => {
   const {title,description,fine_dkk=0,prison_days=0,license_points=0}=req.body;
+  if(req.body.penalties!==undefined&&!Array.isArray(req.body.penalties))
+    return res.status(400).json({error:"Listen over bøder og straffe har et ugyldigt format"});
+  let penalties=[];
+  if(Array.isArray(req.body.penalties)&&req.body.penalties.length){
+    const requested=new Map();
+    for(const row of req.body.penalties){
+      const id=Number(row.fine_id),quantity=Number(row.quantity);
+      if(!Number.isInteger(id)||id<1||!Number.isInteger(quantity)||quantity<1||quantity>999)
+        return res.status(400).json({error:"En bødetakst eller mængde er ugyldig"});
+      requested.set(id,(requested.get(id)||0)+quantity);
+      if(requested.get(id)>999)return res.status(400).json({error:"Der kan højst tilføjes 999 af samme takst"});
+    }
+    const ids=[...requested.keys()];
+    const rates=await q("SELECT id,category,title,price_dkk,points,prison_days FROM fines WHERE id=ANY($1::int[])",[ids]);
+    if(rates.rowCount!==ids.length)return res.status(400).json({error:"En eller flere valgte bødetakster findes ikke længere"});
+    const byId=new Map(rates.rows.map(rate=>[rate.id,rate]));
+    penalties=ids.map(id=>{const rate=byId.get(id),quantity=requested.get(id);return {fine_id:id,category:rate.category,title:rate.title,quantity,price_dkk:Number(rate.price_dkk)||0,points:Number(rate.points)||0,prison_days:Number(rate.prison_days)||0,line_total_dkk:(Number(rate.price_dkk)||0)*quantity,line_total_points:(Number(rate.points)||0)*quantity,line_total_prison_days:(Number(rate.prison_days)||0)*quantity}});
+  }
+  const totals=penalties.length?{
+    fine_dkk:penalties.reduce((sum,p)=>sum+p.line_total_dkk,0),
+    license_points:penalties.reduce((sum,p)=>sum+p.line_total_points,0),
+    prison_days:penalties.reduce((sum,p)=>sum+p.line_total_prison_days,0)
+  }:{fine_dkk:Number(fine_dkk)||0,license_points:Number(license_points)||0,prison_days:Number(prison_days)||0};
   const caseNumber = `SAG-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
-  const r = await q(`INSERT INTO cases(case_number,person_id,officer_id,title,description,fine_dkk,prison_days,license_points)
-                     VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-                     [caseNumber,req.params.id,req.session.user.id,title,description||"",Number(fine_dkk),Number(prison_days),Number(license_points)]);
+  const r = await q(`INSERT INTO cases(case_number,person_id,officer_id,title,description,fine_dkk,prison_days,license_points,penalties)
+                     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb) RETURNING *`,
+                     [caseNumber,req.params.id,req.session.user.id,title,description||"",totals.fine_dkk,totals.prison_days,totals.license_points,JSON.stringify(penalties)]);
   await logAction(req.session.user.id,"CREATE","Opret sag",caseNumber);
   res.status(201).json(r.rows[0]);
 });
@@ -614,17 +641,17 @@ app.get("/api/fines", requireAuth, async (req,res) => {
 app.post("/api/fines", requireAdmin, async (req,res) => {
   const enabled=await q("SELECT value FROM settings WHERE key='custom_fines_enabled'");
   if(enabled.rows[0]?.value==="false") return res.status(403).json({error:"Egne bødetakster er slået fra i indstillingerne"});
-  const {category,code,title,price_dkk=0,points=0,description=""}=req.body;
-  const r=await q("INSERT INTO fines(category,code,title,price_dkk,points,description) VALUES($1,$2,$3,$4,$5,$6) RETURNING *",
-    [category,code||null,title,Number(price_dkk),Number(points),description]);
+  const {category,code,title,price_dkk=0,points=0,prison_days=0,description=""}=req.body;
+  const r=await q("INSERT INTO fines(category,code,title,price_dkk,points,prison_days,description) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *",
+    [category,code||null,title,Number(price_dkk),Number(points),Number(prison_days),description]);
   await logAction(req.session.user.id,"CREATE","Opret bødetakst",title); res.status(201).json(r.rows[0]);
 });
 app.patch("/api/fines/:id", requireAdmin, async (req,res) => {
   const enabled=await q("SELECT value FROM settings WHERE key='custom_fines_enabled'");
   if(enabled.rows[0]?.value==="false") return res.status(403).json({error:"Egne bødetakster er slået fra i indstillingerne"});
-  const {category,code,title,price_dkk=0,points=0,description=""}=req.body;
-  const r=await q("UPDATE fines SET category=$1,code=$2,title=$3,price_dkk=$4,points=$5,description=$6 WHERE id=$7 RETURNING *",
-    [category,code||null,title,Number(price_dkk),Number(points),description,req.params.id]);
+  const {category,code,title,price_dkk=0,points=0,prison_days=0,description=""}=req.body;
+  const r=await q("UPDATE fines SET category=$1,code=$2,title=$3,price_dkk=$4,points=$5,prison_days=$6,description=$7 WHERE id=$8 RETURNING *",
+    [category,code||null,title,Number(price_dkk),Number(points),Number(prison_days),description,req.params.id]);
   if(!r.rowCount) return res.status(404).json({error:"Bødetakst ikke fundet"});
   await logAction(req.session.user.id,"UPDATE","Opdater bødetakst",title); res.json(r.rows[0]);
 });
@@ -738,3 +765,4 @@ app.use((err,req,res,_next)=>{
 initDb()
   .then(()=>app.listen(PORT,()=>console.log(`POLITI Tablet running on port ${PORT}`)))
   .catch(err=>{ console.error("Database initialization failed:",err); process.exit(1); });
+

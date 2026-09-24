@@ -6,6 +6,7 @@ Et mørkt dansk politiinterface til FiveM-rollespil. Løsningen bruger Express, 
 
 - Dashboard med registre, seneste sager, ventende ansøgninger og opslag.
 - Personregister med søgning, redigering og samlet visning af sager, køretøjer og efterlysninger.
+- Sagsberegner der lægger flere bødetakster sammen og automatisk summerer kroner, klip og fængselsdage.
 - Køretøjsregister med ejeropslag og redigering.
 - Flådestyring med patruljekøretøjer, kaldesignaler, status og medarbejdertilknytning.
 - Opkaldsliste med overtagelse, afslutning, telefonlink og interaktivt GTA V-kort med koordinatmarkører.

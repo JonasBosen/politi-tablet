@@ -151,5 +151,14 @@ nav button.active:after{background:linear-gradient(90deg,#087bff,#28d2ff);box-sh
 .login-card{background:#0d1726;border-color:#23405e}
 .toast{background:#0c2a26;border-color:#147253}.toast.error{background:#351b25;border-color:#8d3545}
 .app-footer i{color:var(--accent-bright)}
+.penalty-add-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:9px}
+.penalty-list{display:grid;gap:7px;max-height:220px;overflow:auto}
+.penalty-empty{padding:14px;border:1px dashed #285077;border-radius:7px;color:var(--muted);font-size:calc(var(--font-scale, 1) * 11px);text-align:center}
+.penalty-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid #203f5e;border-radius:7px;background:#0b1929}
+.penalty-row>div:first-child{display:grid;gap:5px;min-width:0}.penalty-row b{font-size:calc(var(--font-scale, 1) * 12px)}.penalty-row small{font-size:calc(var(--font-scale, 1) * 10px);color:var(--muted)}
+.penalty-stepper{display:flex;align-items:center;gap:8px;flex:none}.penalty-stepper button{width:29px;height:29px;border:1px solid #28618e;border-radius:6px;background:#102d49;color:#c4ebff;cursor:pointer;font-weight:800}.penalty-stepper button:hover{background:#164b75}
+.penalty-totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:12px;border:1px solid #1667a2;border-radius:8px;background:linear-gradient(110deg,#0c2d4d,#0c1b2d);box-shadow:inset 0 0 22px #087bff14}
+.penalty-totals>div{display:grid;gap:6px}.penalty-totals span{color:#93b2cf;font-size:calc(var(--font-scale, 1) * 10px)}.penalty-totals strong{color:#e8f8ff;font-size:calc(var(--font-scale, 1) * 15px)}
 @media(prefers-reduced-motion:no-preference){.btn,.stat-card,.call-card{transition:all .18s ease}}
+@media(max-width:600px){.penalty-add-row{grid-template-columns:1fr}.penalty-add-row>.btn{justify-self:end}.penalty-totals{gap:5px;padding:9px}.penalty-totals strong{font-size:calc(var(--font-scale, 1) * 12px)}}
 
