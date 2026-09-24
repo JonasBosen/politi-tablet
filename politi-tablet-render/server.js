@@ -439,6 +439,20 @@ app.get("/api/persons/:id", requireAuth, async (req,res) => {
   res.json({person:p.rows[0],cases:cases.rows,vehicles:vehicles.rows,warrants:warrants.rows});
 });
 
+app.delete("/api/persons/:id/cases/:caseId", requireAuth, async (req,res) => {
+  const personId=Number(req.params.id),caseId=Number(req.params.caseId);
+  if(!Number.isInteger(personId)||personId<1||!Number.isInteger(caseId)||caseId<1)
+    return res.status(400).json({error:"Ugyldigt person- eller sagsnummer"});
+  const existing=await q("SELECT id,case_number,title,officer_id FROM cases WHERE id=$1 AND person_id=$2",[caseId,personId]);
+  if(!existing.rowCount)return res.status(404).json({error:"Sagen blev ikke fundet på personen"});
+  const record=existing.rows[0];
+  if(req.session.user.role!=="admin"&&Number(record.officer_id)!==Number(req.session.user.id))
+    return res.status(403).json({error:"Du kan kun slette dine egne sager"});
+  await q("DELETE FROM cases WHERE id=$1 AND person_id=$2",[caseId,personId]);
+  await logAction(req.session.user.id,"DELETE","Slet sag",`${record.case_number} · ${record.title}`);
+  res.json({ok:true,case_number:record.case_number});
+});
+
 app.post("/api/persons/:id/cases", requireAuth, async (req,res) => {
   const {title,description,fine_dkk=0,prison_days=0,license_points=0}=req.body;
   if(req.body.penalties!==undefined&&!Array.isArray(req.body.penalties))
