@@ -401,4 +401,10 @@ header nav button.active:after{background:linear-gradient(90deg,#2487ff,#55c6ff)
 @media(prefers-reduced-motion:reduce){.btn,.icon-btn,.profile-dropdown button,.quick-actions button,.board-admin-actions button,.application-admin-actions button{transition:none}}
 .status.vacation{color:#ffd18b;background:#563b1e;border:1px solid #a96e28}
 .status.sick,.status.suspended{color:#ffadb3;background:#512630;border:1px solid #a93e50}
+.employee-status-cell{display:flex;align-items:center;gap:8px;min-width:138px}
+.employee-status-copy{display:grid;justify-items:start;gap:4px}
+.employee-status-copy small{color:#abb8c8;font-size:calc(var(--font-scale, 1) * 9px);white-space:nowrap}
+.calendar-icon-btn{width:31px;height:31px;display:inline-grid;place-items:center;flex:none;border-color:#397ab9;background:linear-gradient(145deg,#244e75,#1c3856);color:#bfe1ff;font-size:calc(var(--font-scale, 1) * 14px)}
+.calendar-icon-btn:hover{border-color:#71baff;background:linear-gradient(145deg,#2a70ae,#20527f);color:white}
+.form input[type="date"]{color-scheme:dark;min-height:40px}
 
