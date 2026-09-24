@@ -19,8 +19,11 @@ end
 
 local function safeGet(player, key)
     if not player or type(player.get) ~= 'function' then return nil end
-    local ok, value = pcall(player.get, player, key)
-    if ok then return value end
+    -- ESX getters are usually closures taking only the key; some forks define methods with self.
+    local ok, value = pcall(player.get, key)
+    if ok and value ~= nil then return value end
+    local methodOk, methodValue = pcall(player.get, player, key)
+    if methodOk then return methodValue end
 end
 
 local function addressText(value)
