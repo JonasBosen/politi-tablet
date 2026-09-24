@@ -63,6 +63,13 @@ async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS ranks (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(120) UNIQUE NOT NULL,
+      level INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS user_preferences (
       user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       font_scale INTEGER NOT NULL DEFAULT 100 CHECK (font_scale BETWEEN 80 AND 150),
@@ -220,6 +227,10 @@ async function initDb() {
       ["admin", hash, "Administrator", "Rigspolitichef", "00-01", "admin"]
     );
   }
+
+  await q(`INSERT INTO ranks(name,level)
+           SELECT DISTINCT BTRIM(rank),0 FROM users WHERE NULLIF(BTRIM(rank),'') IS NOT NULL
+           ON CONFLICT(name) DO NOTHING`);
 
   const p = await q("SELECT COUNT(*)::int AS c FROM persons");
   if (p.rows[0].c === 0) {
@@ -724,6 +735,52 @@ app.delete("/api/board/:id", requireAuth, requireFeature("board_enabled"), async
   await logAction(req.session.user.id,"DELETE","Slet opslag",r.rows[0].title); res.json({ok:true});
 });
 
+app.get("/api/ranks", requireAdmin, async (_req,res) => {
+  const r=await q(`SELECT r.id,r.name,r.level,r.created_at,COUNT(u.id)::int employee_count
+                   FROM ranks r LEFT JOIN users u ON u.rank=r.name
+                   GROUP BY r.id ORDER BY r.level DESC,r.name ASC`);
+  res.json(r.rows);
+});
+
+app.post("/api/ranks", requireAdmin, async (req,res) => {
+  const name=String(req.body.name||"").trim(),level=Number(req.body.level??0);
+  if(!name||name.length>120||!Number.isInteger(level)||level < -10000||level > 10000)
+    return res.status(400).json({error:"Indtast en rang og et gyldigt niveau"});
+  const duplicate=await q("SELECT 1 FROM ranks WHERE LOWER(name)=LOWER($1)",[name]);
+  if(duplicate.rowCount)return res.status(409).json({error:"Rangen findes allerede"});
+  const r=await q("INSERT INTO ranks(name,level) VALUES($1,$2) RETURNING id,name,level,created_at",[name,level]);
+  await logAction(req.session.user.id,"CREATE","Opret rang",name);
+  res.status(201).json({...r.rows[0],employee_count:0});
+});
+
+app.patch("/api/ranks/:id", requireAdmin, async (req,res) => {
+  const id=Number(req.params.id),name=String(req.body.name||"").trim(),level=Number(req.body.level);
+  if(!Number.isInteger(id)||id<1||!name||name.length>120||!Number.isInteger(level)||level < -10000||level > 10000)
+    return res.status(400).json({error:"Indtast en rang og et gyldigt niveau"});
+  const duplicate=await q("SELECT 1 FROM ranks WHERE LOWER(name)=LOWER($1) AND id<>$2",[name,id]);
+  if(duplicate.rowCount)return res.status(409).json({error:"Rangen findes allerede"});
+  const r=await q(`WITH old_rank AS MATERIALIZED (SELECT name FROM ranks WHERE id=$3),
+      updated_rank AS (UPDATE ranks SET name=$1,level=$2 WHERE id=$3 RETURNING id,name,level,created_at),
+      updated_staff AS (UPDATE users SET rank=(SELECT name FROM updated_rank) WHERE rank=(SELECT name FROM old_rank))
+      SELECT * FROM updated_rank`,[name,level,id]);
+  if(!r.rowCount)return res.status(404).json({error:"Rangen blev ikke fundet"});
+  await logAction(req.session.user.id,"UPDATE","Opdater rang",name);
+  const count=await q("SELECT COUNT(*)::int employee_count FROM users WHERE rank=$1",[name]);
+  res.json({...r.rows[0],employee_count:count.rows[0].employee_count});
+});
+
+app.delete("/api/ranks/:id", requireAdmin, async (req,res) => {
+  const id=Number(req.params.id);
+  if(!Number.isInteger(id)||id<1)return res.status(400).json({error:"Ugyldigt rangnummer"});
+  const rank=await q("SELECT name FROM ranks WHERE id=$1",[id]);
+  if(!rank.rowCount)return res.status(404).json({error:"Rangen blev ikke fundet"});
+  const assigned=await q("SELECT COUNT(*)::int c FROM users WHERE rank=$1",[rank.rows[0].name]);
+  if(assigned.rows[0].c)return res.status(409).json({error:"Rangen er stadig tildelt medarbejdere. Tildel dem en anden rang først."});
+  await q("DELETE FROM ranks WHERE id=$1",[id]);
+  await logAction(req.session.user.id,"DELETE","Slet rang",rank.rows[0].name);
+  res.json({ok:true});
+});
+
 app.get("/api/employees", requireAuth, async (_req,res) => {
   const r=await q("SELECT id,username,full_name,rank,badge_number,role,active,created_at FROM users ORDER BY active DESC,rank,full_name");
   res.json(r.rows);
@@ -732,17 +789,21 @@ app.get("/api/employees", requireAuth, async (_req,res) => {
 app.post("/api/employees", requireAdmin, async (req,res) => {
   const {username,password,full_name,rank="Betjent",badge_number,role="officer"}=req.body;
   if(!password || password.length<8) return res.status(400).json({error:"Adgangskoden skal være mindst 8 tegn"});
+  const rankName=String(rank||"").trim();
+  if(!(await q("SELECT 1 FROM ranks WHERE name=$1",[rankName])).rowCount)return res.status(400).json({error:"Vælg en rang, der findes i rangadministrationen"});
   const hash=await bcrypt.hash(password,12);
   const r=await q(`INSERT INTO users(username,password_hash,full_name,rank,badge_number,role) VALUES($1,$2,$3,$4,$5,$6)
-    RETURNING id,username,full_name,rank,badge_number,role,active,created_at`,[username,hash,full_name,rank,badge_number||null,role]);
+    RETURNING id,username,full_name,rank,badge_number,role,active,created_at`,[username,hash,full_name,rankName,badge_number||null,role]);
   await logAction(req.session.user.id,"CREATE","Opret ansat",full_name); res.status(201).json(r.rows[0]);
 });
 app.patch("/api/employees/:id", requireAdmin, async (req,res) => {
   const {full_name,rank,badge_number,role,active}=req.body;
   if(String(req.params.id)===String(req.session.user.id) && (role!=="admin" || !active)) return res.status(400).json({error:"Du kan ikke fjerne dine egne administratorrettigheder"});
+  const rankName=String(rank||"").trim();
+  if(!(await q("SELECT 1 FROM ranks WHERE name=$1",[rankName])).rowCount)return res.status(400).json({error:"Vælg en rang, der findes i rangadministrationen"});
   const r=await q(`UPDATE users SET full_name=$1,rank=$2,badge_number=$3,role=$4,active=$5 WHERE id=$6
     RETURNING id,username,full_name,rank,badge_number,role,active,created_at`,
-    [full_name,rank,badge_number||null,role,!!active,req.params.id]);
+    [full_name,rankName,badge_number||null,role,!!active,req.params.id]);
   if(!r.rowCount) return res.status(404).json({error:"Ansat ikke fundet"});
   await logAction(req.session.user.id,"UPDATE","Opdater ansat",full_name); res.json(r.rows[0]);
 });
