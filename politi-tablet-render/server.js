@@ -4,6 +4,7 @@ const pgSession = require("connect-pg-simple")(session);
 const { Pool } = require("pg");
 const bcrypt = require("bcryptjs");
 const path = require("path");
+const crypto = require("crypto");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -92,6 +93,39 @@ async function initDb() {
       notes TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS fleet_vehicles (
+      id SERIAL PRIMARY KEY,
+      call_sign VARCHAR(40) UNIQUE NOT NULL,
+      plate VARCHAR(30) UNIQUE NOT NULL,
+      model VARCHAR(120) NOT NULL,
+      status VARCHAR(30) NOT NULL DEFAULT 'Ledig',
+      assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      location_x NUMERIC(10,2),
+      location_y NUMERIC(10,2),
+      notes TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS dispatch_calls (
+      id BIGSERIAL PRIMARY KEY,
+      external_id VARCHAR(160) UNIQUE,
+      caller_name VARCHAR(160) NOT NULL DEFAULT 'Ukendt',
+      caller_phone VARCHAR(60),
+      category VARCHAR(80) NOT NULL DEFAULT '112',
+      message TEXT NOT NULL,
+      coord_x NUMERIC(10,2) NOT NULL,
+      coord_y NUMERIC(10,2) NOT NULL,
+      coord_z NUMERIC(10,2) NOT NULL DEFAULT 0,
+      status VARCHAR(20) NOT NULL DEFAULT 'pending',
+      claimed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      accepted_at TIMESTAMPTZ,
+      closed_at TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS dispatch_calls_status_created_idx ON dispatch_calls(status,created_at DESC);
 
     CREATE TABLE IF NOT EXISTS cases (
       id SERIAL PRIMARY KEY,
@@ -219,6 +253,41 @@ function requireFeature(key) {
   }).catch(next);
 }
 
+function requireFiveMKey(req,res,next) {
+  const expected=process.env.FIVEM_API_KEY;
+  const authorization=req.get("authorization")||"";
+  const supplied=authorization.match(/^Bearer\s+(.+)$/i)?.[1]||"";
+  if(!expected) return res.status(503).json({error:"FiveM-integrationen er ikke konfigureret på serveren."});
+  const a=Buffer.from(supplied),b=Buffer.from(expected);
+  if(a.length!==b.length||!crypto.timingSafeEqual(a,b)) return res.status(401).json({error:"Ugyldig integrationsnøgle."});
+  next();
+}
+
+function callCoordinates(body={}) {
+  const coords=body.coords||body.location||{};
+  const x=Number(body.x??coords.x),y=Number(body.y??coords.y),z=Number(body.z??coords.z??0);
+  if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(z)||Math.abs(x)>100000||Math.abs(y)>100000||Math.abs(z)>100000) {
+    const error=new Error("Opkaldet skal have gyldige X- og Y-koordinater.");error.status=400;throw error;
+  }
+  return {x,y,z};
+}
+
+async function insertDispatchCall(body={},userId=null) {
+  const caller=String(body.caller_name||body.player_name||"Ukendt").trim().slice(0,160)||"Ukendt";
+  const phone=String(body.caller_phone||body.phone||"").trim().slice(0,60)||null;
+  const category=String(body.category||"112").trim().slice(0,80)||"112";
+  const message=String(body.message||body.description||"").trim();
+  if(!message) {const error=new Error("Skriv en besked om opkaldet.");error.status=400;throw error;}
+  const {x,y,z}=callCoordinates(body);
+  const externalId=String(body.external_id||body.call_id||"").trim().slice(0,160)||null;
+  const result=await q(`INSERT INTO dispatch_calls(external_id,caller_name,caller_phone,category,message,coord_x,coord_y,coord_z,created_by)
+                        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(external_id) DO NOTHING RETURNING *`,
+    [externalId,caller,phone,category,message,x,y,z,userId]);
+  if(result.rowCount) return {call:result.rows[0],duplicate:false};
+  const existing=await q("SELECT * FROM dispatch_calls WHERE external_id=$1",[externalId]);
+  return {call:existing.rows[0],duplicate:true};
+}
+
 app.get("/api/health", async (_req, res) => {
   try { await q("SELECT 1"); res.json({ ok: true, database: "connected" }); }
   catch (e) { res.status(503).json({ ok: false, error: e.message }); }
@@ -266,13 +335,15 @@ app.get("/api/public-settings", async (_req,res) => {
 });
 
 app.get("/api/dashboard", requireAuth, async (_req,res) => {
-  const [persons, vehicles, cases, warrants, employees, apps] = await Promise.all([
+  const [persons, vehicles, cases, warrants, employees, apps, fleet, activeCalls] = await Promise.all([
     q("SELECT COUNT(*)::int c FROM persons"),
     q("SELECT COUNT(*)::int c FROM vehicles"),
     q("SELECT COUNT(*)::int c FROM cases"),
     q("SELECT COUNT(*)::int c FROM warrants WHERE active=true"),
     q("SELECT COUNT(*)::int c FROM users WHERE active=true"),
-    q("SELECT COUNT(*)::int c FROM applications WHERE status='Afventer'")
+    q("SELECT COUNT(*)::int c FROM applications WHERE status='Afventer'"),
+    q("SELECT COUNT(*)::int c FROM fleet_vehicles WHERE status='Ledig'"),
+    q("SELECT COUNT(*)::int c FROM dispatch_calls WHERE status<>'closed'")
   ]);
   const [recentCases, pendingApps, recentPosts] = await Promise.all([
     q(`SELECT c.id,c.case_number,c.title,c.fine_dkk,c.prison_days,c.created_at,p.name person_name,u.full_name officer_name
@@ -283,6 +354,7 @@ app.get("/api/dashboard", requireAuth, async (_req,res) => {
   res.json({
     persons: persons.rows[0].c, vehicles: vehicles.rows[0].c, cases: cases.rows[0].c,
     warrants: warrants.rows[0].c, employees: employees.rows[0].c, applications: apps.rows[0].c,
+    fleetAvailable: fleet.rows[0].c, activeCalls: activeCalls.rows[0].c,
     recentCases: recentCases.rows, pendingApplications: pendingApps.rows, announcements: recentPosts.rows
   });
 });
@@ -361,6 +433,106 @@ app.patch("/api/vehicles/:id", requireAuth, async (req,res) => {
     [plate,owner_id||null,make||null,model||null,category||null,color||null,status,notes||null,req.params.id]);
   if(!r.rowCount) return res.status(404).json({error:"Køretøj ikke fundet"});
   await logAction(req.session.user.id,"UPDATE","Opdater køretøj",plate); res.json(r.rows[0]);
+});
+
+const fleetStatuses=["Ledig","På vagt","På patrulje","På værksted"];
+app.get("/api/fleet", requireAuth, async (req,res) => {
+  const term=`%${req.query.search||""}%`;
+  const r=await q(`SELECT f.*,u.full_name assigned_name,u.badge_number assigned_badge
+                   FROM fleet_vehicles f LEFT JOIN users u ON u.id=f.assigned_to
+                   WHERE f.call_sign ILIKE $1 OR f.plate ILIKE $1 OR f.model ILIKE $1 OR COALESCE(u.full_name,'') ILIKE $1
+                   ORDER BY CASE f.status WHEN 'På patrulje' THEN 1 WHEN 'På vagt' THEN 2 WHEN 'Ledig' THEN 3 ELSE 4 END,f.call_sign`,[term]);
+  res.json(r.rows);
+});
+app.post("/api/fleet", requireAdmin, async (req,res) => {
+  const {call_sign,plate,model,status="Ledig",assigned_to,notes}=req.body||{};
+  if(!call_sign||!plate||!model) return res.status(400).json({error:"Kaldesignal, nummerplade og model skal udfyldes."});
+  if(!fleetStatuses.includes(status)) return res.status(400).json({error:"Ugyldig flådestatus."});
+  const r=await q(`INSERT INTO fleet_vehicles(call_sign,plate,model,status,assigned_to,notes)
+                   VALUES($1,$2,$3,$4,$5,$6) RETURNING *`,[String(call_sign).trim(),String(plate).trim().toUpperCase(),String(model).trim(),status,assigned_to||null,notes||null]);
+  await logAction(req.session.user.id,"CREATE","Tilføj flådekøretøj",String(call_sign));res.status(201).json(r.rows[0]);
+});
+app.patch("/api/fleet/:id", requireAdmin, async (req,res) => {
+  const {call_sign,plate,model,status="Ledig",assigned_to,notes}=req.body||{};
+  if(!call_sign||!plate||!model) return res.status(400).json({error:"Kaldesignal, nummerplade og model skal udfyldes."});
+  if(!fleetStatuses.includes(status)) return res.status(400).json({error:"Ugyldig flådestatus."});
+  const r=await q(`UPDATE fleet_vehicles SET call_sign=$1,plate=$2,model=$3,status=$4,assigned_to=$5,notes=$6,updated_at=NOW()
+                   WHERE id=$7 RETURNING *`,[String(call_sign).trim(),String(plate).trim().toUpperCase(),String(model).trim(),status,assigned_to||null,notes||null,req.params.id]);
+  if(!r.rowCount)return res.status(404).json({error:"Flådekøretøj ikke fundet."});
+  await logAction(req.session.user.id,"UPDATE","Opdater flådekøretøj",String(call_sign));res.json(r.rows[0]);
+});
+app.patch("/api/fleet/:id/status", requireAuth, async (req,res) => {
+  const {status}=req.body||{};
+  if(!fleetStatuses.includes(status))return res.status(400).json({error:"Ugyldig flådestatus."});
+  const assignedTo=status==="Ledig"||status==="På værksted"?null:req.session.user.id;
+  const r=await q(`UPDATE fleet_vehicles SET status=$1,assigned_to=$2,updated_at=NOW()
+                   WHERE id=$3 AND (assigned_to IS NULL OR assigned_to=$4 OR $5='admin') RETURNING *`,[status,assignedTo,req.params.id,req.session.user.id,req.session.user.role]);
+  if(!r.rowCount)return res.status(409).json({error:"Køretøjet er allerede tildelt en anden medarbejder."});
+  await logAction(req.session.user.id,"UPDATE","Flådestatus",`${r.rows[0].call_sign}: ${status}`);res.json(r.rows[0]);
+});
+app.patch("/api/fleet/:id/location", requireAuth, async (req,res) => {
+  const {x,y}=callCoordinates(req.body||{});
+  const r=await q(`UPDATE fleet_vehicles SET location_x=$1,location_y=$2,updated_at=NOW() WHERE id=$3
+                   AND (assigned_to IS NULL OR assigned_to=$4 OR $5='admin') RETURNING *`,[x,y,req.params.id,req.session.user.id,req.session.user.role]);
+  if(!r.rowCount)return res.status(409).json({error:"Køretøjet er ukendt eller tildelt en anden medarbejder."});
+  res.json(r.rows[0]);
+});
+app.delete("/api/fleet/:id", requireAdmin, async (req,res) => {
+  const r=await q("DELETE FROM fleet_vehicles WHERE id=$1 RETURNING call_sign",[req.params.id]);
+  if(!r.rowCount)return res.status(404).json({error:"Flådekøretøj ikke fundet."});
+  await logAction(req.session.user.id,"DELETE","Slet flådekøretøj",r.rows[0].call_sign);res.json({ok:true});
+});
+
+app.get("/api/calls", requireAuth, async (req,res) => {
+  const status=req.query.status||"open";
+  const r=await q(`SELECT c.*,u.full_name claimed_name,u.rank claimed_rank
+                   FROM dispatch_calls c LEFT JOIN users u ON u.id=c.claimed_by
+                   WHERE ($1='all' OR ($1='open' AND c.status<>'closed') OR ($1='closed' AND c.status='closed'))
+                   ORDER BY CASE c.status WHEN 'pending' THEN 1 WHEN 'accepted' THEN 2 ELSE 3 END,c.created_at DESC LIMIT 500`,[status]);
+  res.json(r.rows);
+});
+app.post("/api/calls", requireAuth, async (req,res) => {
+  const result=await insertDispatchCall(req.body||{},req.session.user.id);
+  if(!result.duplicate)await logAction(req.session.user.id,"CREATE","Nyt opkald",result.call.category);
+  res.status(result.duplicate?200:201).json(result);
+});
+app.patch("/api/calls/:id", requireAuth, async (req,res) => {
+  const {action}=req.body||{};let r;
+  if(action==="accept") {
+    r=await q(`UPDATE dispatch_calls SET status='accepted',claimed_by=$1,accepted_at=COALESCE(accepted_at,NOW())
+               WHERE id=$2 AND (status='pending' OR (status='accepted' AND claimed_by=$1)) RETURNING *`,[req.session.user.id,req.params.id]);
+  } else if(action==="release") {
+    r=await q(`UPDATE dispatch_calls SET status='pending',claimed_by=NULL,accepted_at=NULL WHERE id=$1 AND status='accepted'
+               AND (claimed_by=$2 OR $3='admin') RETURNING *`,[req.params.id,req.session.user.id,req.session.user.role]);
+  } else if(action==="close") {
+    r=await q(`UPDATE dispatch_calls SET status='closed',closed_at=NOW() WHERE id=$1 AND status<>'closed'
+               AND (claimed_by IS NULL OR claimed_by=$2 OR $3='admin') RETURNING *`,[req.params.id,req.session.user.id,req.session.user.role]);
+  } else return res.status(400).json({error:"Vælg om opkaldet skal overtages, frigives eller afsluttes."});
+  if(!r.rowCount)return res.status(409).json({error:"Opkaldet er allerede afsluttet eller håndteres af en anden medarbejder."});
+  const title=action==="accept"?"Overtag opkald":action==="release"?"Frigiv opkald":"Afslut opkald";
+  await logAction(req.session.user.id,"UPDATE",title,`Opkald #${r.rows[0].id}`);res.json(r.rows[0]);
+});
+
+app.post("/api/integrations/calls", requireFiveMKey, async (req,res) => {
+  const result=await insertDispatchCall(req.body||{});
+  if(!result.duplicate)await logAction(null,"CREATE","FiveM-opkald",`${result.call.category}: ${result.call.message.slice(0,120)}`);
+  res.status(result.duplicate?200:201).json(result);
+});
+app.get("/api/integrations/fleet", requireFiveMKey, async (_req,res) => {
+  const r=await q(`SELECT f.call_sign,f.plate,f.model,f.status,f.location_x,f.location_y,u.full_name assigned_name
+                   FROM fleet_vehicles f LEFT JOIN users u ON u.id=f.assigned_to ORDER BY f.call_sign`);
+  res.json(r.rows);
+});
+app.patch("/api/integrations/fleet/:callSign/location", requireFiveMKey, async (req,res) => {
+  const {x,y}=callCoordinates(req.body||{});
+  const r=await q("UPDATE fleet_vehicles SET location_x=$1,location_y=$2,updated_at=NOW() WHERE call_sign=$3 RETURNING call_sign,location_x,location_y,updated_at",[x,y,req.params.callSign]);
+  if(!r.rowCount)return res.status(404).json({error:"Kaldesignal ikke fundet."});
+  res.json(r.rows[0]);
+});
+app.get("/api/integrations/calls/active", requireFiveMKey, async (_req,res) => {
+  const r=await q(`SELECT id,external_id,caller_name,caller_phone,category,message,coord_x,coord_y,coord_z,status,created_at
+                   FROM dispatch_calls WHERE status<>'closed' ORDER BY created_at ASC LIMIT 100`);
+  res.json(r.rows);
 });
 
 app.get("/api/warrants", requireAuth, requireFeature("warrants_enabled"), async (_req,res) => {
