@@ -62,11 +62,18 @@ async function initDb() {
       active BOOLEAN NOT NULL DEFAULT TRUE,
       employment_status VARCHAR(30) NOT NULL DEFAULT 'Aktiv',
       return_date DATE,
+      last_activity_at TIMESTAMPTZ,
+      status_changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      inactive_auto BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     ALTER TABLE users ADD COLUMN IF NOT EXISTS employment_status VARCHAR(30) NOT NULL DEFAULT 'Aktiv';
     ALTER TABLE users ADD COLUMN IF NOT EXISTS return_date DATE;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS status_changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS inactive_auto BOOLEAN NOT NULL DEFAULT FALSE;
     UPDATE users SET employment_status='Inaktiv' WHERE active=false AND employment_status='Aktiv';
+    UPDATE users SET active=true WHERE employment_status='Inaktiv';
     UPDATE users SET return_date=NULL WHERE employment_status NOT IN ('Syg','Ferie');
 
     CREATE TABLE IF NOT EXISTS ranks (
@@ -331,6 +338,14 @@ async function logAction(userId, action, title, description = "") {
     [userId, action, title, description]);
 }
 
+async function markIdleEmployees() {
+  const idle=await q(`UPDATE users SET employment_status='Inaktiv',status_changed_at=NOW(),inactive_auto=TRUE
+    WHERE active=TRUE AND employment_status='Aktiv' AND last_activity_at IS NOT NULL
+      AND last_activity_at < NOW() - INTERVAL '5 minutes'
+    RETURNING id,full_name`);
+  await Promise.all(idle.rows.map(employee=>logAction(employee.id,"UPDATE","Automatisk inaktiv",`${employee.full_name} har været uden aktivitet i tabletten i 5 minutter`)));
+}
+
 function requireFeature(key) {
   return (req,res,next) => q("SELECT value FROM settings WHERE key=$1",[key]).then(r=>{
     if(r.rows[0]?.value==="false") return res.status(403).json({error:"Denne funktion er slået fra i systemindstillingerne"});
@@ -409,6 +424,12 @@ app.post("/api/login", async (req, res) => {
     return res.status(401).json({ error: "Forkert brugernavn eller adgangskode" });
   }
   const u = r.rows[0];
+  const resumedFromIdle=u.employment_status==='Inaktiv'&&u.inactive_auto;
+  await q(`UPDATE users SET last_activity_at=NOW(),
+    employment_status=CASE WHEN $2::boolean THEN 'Aktiv' ELSE employment_status END,
+    status_changed_at=CASE WHEN $2::boolean THEN NOW() ELSE status_changed_at END,
+    inactive_auto=CASE WHEN $2::boolean THEN FALSE ELSE inactive_auto END WHERE id=$1`,[u.id,resumedFromIdle]);
+  if(resumedFromIdle)await logAction(u.id,"UPDATE","Aktiv igen",`${u.full_name} loggede ind efter automatisk inaktivitet`);
   const access=await q("SELECT COALESCE(level,0)::int rank_level FROM ranks WHERE name=$1",[u.rank]);
   req.session.user = { id: u.id, username: u.username, full_name: u.full_name, rank: u.rank, badge_number: u.badge_number, role: u.role, rank_level:access.rows[0]?.rank_level||0 };
   await logAction(u.id, "LOGIN", "Login", `Bruger ${u.username} loggede ind`);
@@ -425,6 +446,19 @@ app.get("/api/me", requireAuth, async (req,res) => {
   if(!result.rowCount){req.session.destroy(()=>{});return res.status(401).json({error:"Brugeren er ikke aktiv"});}
   const user=result.rows[0];req.session.user={...req.session.user,...user};
   res.json({user:{...user,full:user.role==="admin"||user.rank_level>=10,staff_manager:user.role==="admin"||user.rank_level>=8}});
+});
+
+app.post("/api/activity", requireAuth, async (req,res) => {
+  const current=await q("SELECT employment_status,inactive_auto,full_name FROM users WHERE id=$1",[req.session.user.id]);
+  if(!current.rowCount)return res.status(401).json({error:"Brugeren blev ikke fundet"});
+  const resumed=current.rows[0].employment_status==='Inaktiv'&&current.rows[0].inactive_auto;
+  const result=await q(`UPDATE users SET last_activity_at=NOW(),
+    employment_status=CASE WHEN $2::boolean THEN 'Aktiv' ELSE employment_status END,
+    status_changed_at=CASE WHEN $2::boolean THEN NOW() ELSE status_changed_at END,
+    inactive_auto=CASE WHEN $2::boolean THEN FALSE ELSE inactive_auto END
+    WHERE id=$1 RETURNING employment_status`,[req.session.user.id,resumed]);
+  if(resumed)await logAction(req.session.user.id,"UPDATE","Aktiv igen",`${current.rows[0].full_name} er aktiv i tabletten igen`);
+  res.json({ok:true,employment_status:result.rows[0].employment_status});
 });
 
 app.get("/api/preferences", requireAuth, async (req,res) => {
@@ -886,7 +920,7 @@ app.delete("/api/ranks/:id", requireAdmin, async (req,res) => {
 });
 
 app.get("/api/employees", requireAuth, async (_req,res) => {
-  const r=await q("SELECT u.id,u.username,u.full_name,u.rank,COALESCE(r.level,0)::int rank_level,u.badge_number,u.role,u.active,u.employment_status,u.return_date,u.created_at FROM users u LEFT JOIN ranks r ON r.name=u.rank ORDER BY u.active DESC,r.level DESC,u.full_name");
+  const r=await q("SELECT u.id,u.username,u.full_name,u.rank,COALESCE(r.level,0)::int rank_level,u.badge_number,u.role,u.active,u.employment_status,u.return_date,u.status_changed_at,u.created_at FROM users u LEFT JOIN ranks r ON r.name=u.rank ORDER BY u.active DESC,r.level DESC,u.full_name");
   res.json(r.rows);
 });
 
@@ -922,7 +956,7 @@ app.patch("/api/employees/:id", requireRankAtLeast(8), async (req,res) => {
   const allowedStatuses=["Aktiv","Inaktiv","Syg","Ferie","Suspenderet"];
   const employmentStatus=req.body.employment_status===undefined?existing.rows[0].employment_status:String(req.body.employment_status);
   if(!allowedStatuses.includes(employmentStatus))return res.status(400).json({error:"Vælg en gyldig medarbejderstatus"});
-  const accountActive=!['Inaktiv','Suspenderet'].includes(employmentStatus);
+  const accountActive=employmentStatus!=='Suspenderet';
   const returnDate=["Syg","Ferie"].includes(employmentStatus)?normalizeReturnDate(existing.rows[0].return_date):null;
   const role=req.access.full?(req.body.role||existing.rows[0].role):existing.rows[0].role;
   if(String(req.params.id)===String(req.session.user.id) && (role!=="admin"||["Inaktiv","Suspenderet"].includes(employmentStatus))) return res.status(400).json({error:"Du kan ikke fjerne eller suspendere din egen administratorkonto"});
@@ -932,8 +966,11 @@ app.patch("/api/employees/:id", requireRankAtLeast(8), async (req,res) => {
   const targetRank=await q("SELECT level FROM ranks WHERE name=$1",[rankName]);
   if(!targetRank.rowCount)return res.status(400).json({error:"Vælg en rang, der findes i rangadministrationen"});
   if(!req.access.full&&targetRank.rows[0].level>=req.access.rank_level)return res.status(403).json({error:"Du kan kun tildele rang under dit eget niveau"});
-  const r=await q(`UPDATE users SET full_name=COALESCE($1,full_name),rank=$2,badge_number=$3,role=$4,employment_status=$5,active=$6,return_date=$7::date WHERE id=$8
-    RETURNING id,username,full_name,rank,badge_number,role,active,employment_status,return_date,created_at`,
+  const r=await q(`UPDATE users SET full_name=COALESCE($1,full_name),rank=$2,badge_number=$3,role=$4,
+    status_changed_at=CASE WHEN employment_status IS DISTINCT FROM $5 THEN NOW() ELSE status_changed_at END,
+    last_activity_at=CASE WHEN employment_status IS DISTINCT FROM $5 AND $5='Aktiv' THEN NOW() ELSE last_activity_at END,
+    inactive_auto=FALSE,employment_status=$5,active=$6,return_date=$7::date WHERE id=$8
+    RETURNING id,username,full_name,rank,badge_number,role,active,employment_status,return_date,status_changed_at,created_at`,
     [full_name||null,rankName,badge_number===undefined?null:(badge_number||null),role,employmentStatus,accountActive,returnDate,req.params.id]);
   if(!r.rowCount) return res.status(404).json({error:"Ansat ikke fundet"});
   await logAction(req.session.user.id,"UPDATE","Opdater ansat",full_name); res.json(r.rows[0]);
@@ -998,6 +1035,10 @@ app.use((err,req,res,_next)=>{
 });
 
 initDb()
-  .then(()=>app.listen(PORT,()=>console.log(`POLITI Tablet running on port ${PORT}`)))
+  .then(()=>{
+    app.listen(PORT,()=>console.log(`POLITI Tablet running on port ${PORT}`));
+    const idleCheck=setInterval(()=>markIdleEmployees().catch(error=>console.error("Idle status check failed:",error)),30_000);
+    idleCheck.unref();
+  })
   .catch(err=>{ console.error("Database initialization failed:",err); process.exit(1); });
 
