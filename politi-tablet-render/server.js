@@ -919,8 +919,10 @@ app.delete("/api/ranks/:id", requireAdmin, async (req,res) => {
   res.status(403).json({error:"Der skal altid være præcis 11 rangtrin. Et rangtrin kan ikke slettes."});
 });
 
-app.get("/api/employees", requireAuth, async (_req,res) => {
+app.get("/api/employees", requireAuth, async (req,res) => {
   const r=await q("SELECT u.id,u.username,u.full_name,u.rank,COALESCE(r.level,0)::int rank_level,u.badge_number,u.role,u.active,u.employment_status,u.return_date,u.status_changed_at,u.created_at FROM users u LEFT JOIN ranks r ON r.name=u.rank ORDER BY u.active DESC,r.level DESC,u.full_name");
+  const viewer=await accessFor(req);
+  if(!viewer||viewer.rank_level<7)r.rows.forEach(employee=>{employee.status_changed_at=null});
   res.json(r.rows);
 });
 
